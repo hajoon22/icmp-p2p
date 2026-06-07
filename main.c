@@ -12,6 +12,7 @@
 #include "src/utils/utils.h"
 #include "src/protocol/protocol.h"
 #include "src/monocypher/monocypher.h"
+#include "src/protocol/message/message.h"
 
 int main(int argc, char *argv[]) {
 	// init peers array
@@ -55,6 +56,10 @@ int main(int argc, char *argv[]) {
 			if (rp->icmph.type == 8) {
 				if (rp->data_len == 98 && rp->data[0] == LOOKUP) {
 					parse_lookup_request(s, pub, priv, rp);
+				}
+
+				if (rp->data_len >= 74 && rp->data[0] == MESSAGE) {
+					parse_message(s, rp);
 				}
 			}
 
