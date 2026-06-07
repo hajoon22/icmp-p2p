@@ -6,6 +6,7 @@
 
 enum {
     LOOKUP = 0,
+    MESSAGE = 1,
 };
 
 void parse_lookup_request(int s, char *pub, char *priv, struct icmp_echo *rp);
