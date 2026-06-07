@@ -124,6 +124,15 @@ uint32_t *get_peers(uint32_t dst, uint8_t count, uint8_t *len) {
     return results;
 }
 
+void broadcast_peers(int s, char *data, size_t len) {
+    for (int i = 0; i < next_index; i++) {
+        struct peer *p = &peers[i];
+        if (p->state == checked) {
+            send_echo_packet(s, 8, p->address, data, len);
+        }
+    }
+}
+
 void handle_peers(int s, char *pub, char *priv) {
     time_t now = time(NULL);
     for (int i = 0; i < next_index; i++) {
