@@ -6,28 +6,11 @@
 #include <arpa/inet.h>
 
 #include "peer.h"
+#include "../../config.h"
 #include "../protocol/protocol.h"
 
 static int next_index = 0;
-static size_t peers_len = 0;
-static struct peer *peers = NULL;
-
-int init_peers(size_t len) {
-    peers_len = len;
-
-    peers = malloc(sizeof(struct peer)*peers_len);
-    if (!peers) return -1;
-
-    return 0;
-}
-
-void deinit_peers(void) { 
-    free(peers);
-
-    peers = NULL;
-    peers_len = 0;
-    next_index = 0;
-}
+static struct peer peers[MAX_PEERS];
 
 static void update_peer(struct peer *p, char *pub, uint8_t fs) {
     p->state = checked;
@@ -42,7 +25,7 @@ static void update_peer(struct peer *p, char *pub, uint8_t fs) {
 }
 
 static int add_peer(char *pub, uint32_t addr, uint8_t fs) {
-    if (next_index >= peers_len) {
+    if (next_index >= MAX_PEERS) {
         return -1; // max
     } else if (pub && fs < 1) {
         return 0;
@@ -98,7 +81,7 @@ int new_peer(char *pub, uint32_t addr, uint8_t fs) {
 
 uint8_t free_slots(void) {
     uint8_t free = 0;
-    free = peers_len-next_index;
+    free = MAX_PEERS-next_index;
 
     return free;
 }
@@ -141,7 +124,7 @@ void handle_peers(int s, char *pub, char *priv) {
             p->state = checking;
             p->last_sent = time(NULL);
             p->last_seen = time(NULL);
-            send_lookup_request(s, pub, priv, p->address, peers_len-next_index);
+            send_lookup_request(s, pub, priv, p->address, MAX_PEERS-next_index);
 
             continue;
         }
@@ -158,7 +141,7 @@ void handle_peers(int s, char *pub, char *priv) {
         // check the last seen
         if (now-p->last_seen >= 60 && now-p->last_sent >= 60) {
             p->last_sent = time(NULL);
-            send_lookup_request(s, pub, priv, p->address, peers_len-next_index);
+            send_lookup_request(s, pub, priv, p->address, MAX_PEERS-next_index);
         }
     }
 }
