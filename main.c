@@ -7,6 +7,7 @@
 #include <netinet/ip_icmp.h>
 #include <poll.h>
 
+#include "config.h"
 #include "src/icmp/icmp.h"
 #include "src/peer/peer.h"
 #include "src/utils/utils.h"
@@ -16,7 +17,7 @@
 
 int main(int argc, char *argv[]) {
 	// init peers array
-	init_peers(50);
+	init_peers(MAX_PEERS);
 
 	// generate random seed and public/private key
 	char seed[32], pub[32], priv[64];
