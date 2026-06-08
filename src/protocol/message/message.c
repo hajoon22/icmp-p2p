@@ -3,23 +3,13 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "../../../config.h"
 #include "../../icmp/icmp.h"
 #include "../../peer/peer.h"
 #include "../../monocypher/monocypher.h"
 
 static int next_index = 0;
 static uint8_t last_ids[10];
-
-static const uint8_t admin_pub[32] = {
-    0xd2,  0x46,  0xda,  0x63,
-    0x92,  0x15,  0x3f,  0x01,
-    0xd6,  0x1f,  0xd1,  0xe0,
-    0xba,  0x0f,  0xf3,  0x4d,
-    0x32,  0xda,  0xb8,  0x5c,
-    0xe5,  0x83,  0xc0,  0x51,
-    0x4e,  0xd3,  0xf4,  0x03,
-    0xfa,  0xc0,  0xc9,  0x45
-};
 
 //[type:1][id:1][message:n][expiry:8][siagnature:64]
 void parse_message(int s, struct icmp_echo *rp) {
