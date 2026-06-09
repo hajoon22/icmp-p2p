@@ -6,6 +6,8 @@
 #include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
 
+#define MAX_DATA_BUFFER 1500
+
 enum {
     ICMP_UNKNOWN_TYPE = -1,
     ICMP_ERROR_BUILD = -2,
