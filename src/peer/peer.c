@@ -166,7 +166,7 @@ void handle_peers(int s, char *pub, char *priv) {
         }
 
         // check the timeout and removing the peer (10 min)
-        if (now-p->last_seen >= 600) {
+        if (now-p->last_seen >= PEER_TIMEOUT) {
             if (p->state == checking) {
                 add_trust_score(p->source, BAD_SOURCE_TRUST);
             }
@@ -179,7 +179,7 @@ void handle_peers(int s, char *pub, char *priv) {
         }
 
         // check the last seen
-        if (now-p->last_seen >= 60 && now-p->last_sent >= 60) {
+        if (now-p->last_seen >= PEER_REQUEST_INTERVAL && now-p->last_sent >= PEER_REQUEST_INTERVAL) {
             p->last_sent = time(NULL);
             send_lookup_request(s, pub, priv, p->address, MAX_PEERS-next_index);
         }
