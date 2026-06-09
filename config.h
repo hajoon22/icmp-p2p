@@ -3,6 +3,17 @@
 
 #define MAX_PEERS 50
 
+#define DEFAULT_TRUST 50
+
+#define MAX_TRUST 100
+#define BAN_TRUST 0
+
+#define MIN_TRUST 20
+
+#define GOOD_PEER_TRUST 1
+#define GOOD_SOURCE_TRUST 2
+#define BAD_SOURCE_TRUST -5
+
 // admin's public key
 static const uint8_t admin_pub[32] = {
     0xd2,  0x46,  0xda,  0x63,
