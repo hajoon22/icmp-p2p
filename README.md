@@ -1,7 +1,8 @@
-## ICMP P2P
-A simple P2P network built on top of ICMP Echo Request and Echo Reply packets.
+# ICMP P2P
+A lightweight trust based P2P network built on top of ICMP Echo Request and Echo Reply packets.
 
 ## Features
+
 1. Discovers peers through a bootstrap node.
 2. Expands the peer list using information received from other peers.
 3. Automatically verifies newly discovered peers.
@@ -9,11 +10,11 @@ A simple P2P network built on top of ICMP Echo Request and Echo Reply packets.
 5. Removes inactive peers after a timeout period.
 6. Exchanges peer information through ICMP payloads.
 7. Broadcasts signed messages across the network.
+8. Maintains trust scores for peer selection and propagation.
 
 ## Protocol
 
 ### Lookup Request (type: 0)
-
 `[type (1 byte)][free_slots (1 byte)][public_key (32 bytes)][signature (64 bytes)]`
 
 * type: Protocol identifier.
@@ -22,7 +23,6 @@ A simple P2P network built on top of ICMP Echo Request and Echo Reply packets.
 * signature: Ed25519 signature over `[type][free_slots][public_key]`.
 
 ### Lookup Response (type: 0)
-
 `[type (1 byte)][free_slots (1 byte)][peer_count (1 byte)][peers (n bytes)][public_key (32 bytes)][signature (64 bytes)]`
 
 * type: Protocol identifier.
@@ -33,7 +33,6 @@ A simple P2P network built on top of ICMP Echo Request and Echo Reply packets.
 * signature: Ed25519 signature over `[type][free_slots][peer_count][peers][public_key]`.
 
 ### Message (type: 1)
-
 `[type (1 byte)][id (1 byte)][message (n bytes)][expiry (8 bytes)][signature (64 bytes)]`
 
 * type: Protocol identifier.
@@ -58,6 +57,15 @@ A simple P2P network built on top of ICMP Echo Request and Echo Reply packets.
 | unchecked | Newly discovered peer |
 | checking | Peer verification in progress |
 | checked | Verified peer |
+
+## Trust
+
+- Peers are assigned a trust score.
+- Verified peers gain trust.
+- Peers that provide valid peer information gain trust.
+- Peers that provide invalid or inactive peers lose trust.
+- Low-trust peers are not shared with other peers.
+- Banned peers are removed from the peer list.
 
 ## Peer Management
 
