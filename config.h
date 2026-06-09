@@ -2,6 +2,7 @@
 #define CONFIG_H
 
 #define MAX_PEERS 50
+#define MAX_MESSAGE_HISTORY 10
 
 #define DEFAULT_TRUST 50
 
