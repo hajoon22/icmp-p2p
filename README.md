@@ -23,7 +23,7 @@ A lightweight trust based P2P network built on top of ICMP Echo Request and Echo
 * signature: Ed25519 signature over `[type][free_slots][public_key]`.
 
 ### Lookup Response (type: 0)
-`[type (1 byte)][free_slots (1 byte)][peer_count (1 byte)][peers (n bytes)][public_key (32 bytes)][signature (64 bytes)]`
+`[type (1 byte)][free_slots (1 byte)][peers (n bytes)][public_key (32 bytes)][signature (64 bytes)]`
 
 * type: Protocol identifier.
 * free_slots: Number of available peer slots on the responding node.
