@@ -40,6 +40,10 @@ struct icmp_echo *read_icmp_echo(int s) {
                 continue;
             }
 
+            if (len > MAX_DATA_BUFFER) {
+                len = MAX_DATA_BUFFER;
+            }
+
             // allocate heap buffer for payload
             char *data = calloc(1, len);
             if (!data) {
