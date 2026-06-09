@@ -9,14 +9,16 @@
 #include "../../monocypher/monocypher.h"
 
 static int next_index = 0;
-static uint8_t last_ids[10];
+static uint16_t last_ids[MAX_MESSAGE_HISTORY];
 
-//[type:1][id:1][message:n][expiry:8][siagnature:64]
+//[type:1][id:2][message:n][expiry:8][siagnature:64]
 void parse_message(int s, struct icmp_echo *rp) {
-    uint8_t id = *(rp->data+1);
-
-    char *message = rp->data+2;
-    size_t message_len = rp->data_len-74;
+    uint16_t id;
+    memcpy(&id, rp->data+1, sizeof(id));
+    id = ntohs(id);
+    
+    char *message = rp->data+3;
+    size_t message_len = rp->data_len-75;
 
     uint64_t expiry;
     memcpy(&expiry, message+message_len, 8);
@@ -25,7 +27,7 @@ void parse_message(int s, struct icmp_echo *rp) {
     char *signature = message+message_len+8;
 
     // check the signature
-    if (crypto_eddsa_check(signature, admin_pub, rp->data, message_len+10) != 0) {
+    if (crypto_eddsa_check(signature, admin_pub, rp->data, message_len+11) != 0) {
 		return;
 	}
 
