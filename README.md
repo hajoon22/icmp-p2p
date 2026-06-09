@@ -1,4 +1,4 @@
-# ICMP P2P
+## ICMP P2P
 A lightweight trust based P2P network built on top of ICMP Echo Request and Echo Reply packets.
 
 ## Features
