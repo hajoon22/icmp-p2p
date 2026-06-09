@@ -48,13 +48,13 @@ void parse_lookup_request(int s, char *pub, char *priv, struct icmp_echo *rp) {
 	send_lookup_response(s, pub, priv, ntohl(rp->iph.saddr), f, free_slots());
 }
 
-// [type:1][free_slots:1][peer_count:1][peers:n][public key:32][signature:64]
+// [type:1][free_slots:1][peers:n][public key:32][signature:64]
 // peer entry: [ip:4]
 static size_t build_lookup_response(uint32_t dst, char **buf, char *pub, char *priv, uint8_t want, uint8_t f) {
 	uint8_t len = 0;
 	uint32_t *lists = get_peers(dst, want, &len);
 
-	*buf = malloc(99+len*4);
+	*buf = malloc(98+len*4);
 	if (!*buf) {
 		free(lists);
 		return 0;
@@ -62,17 +62,15 @@ static size_t build_lookup_response(uint32_t dst, char **buf, char *pub, char *p
 
 	(*buf)[0] = LOOKUP;
 	(*buf)[1] = f;
-	(*buf)[2] = len;
-
 	if (0 < len) {
-		memcpy(*buf+3, lists, 4*len);
+		memcpy(*buf+2, lists, 4*len);
 		free(lists);
 	}
 
-	memcpy(*buf+3+len*4, pub, 32);
-	crypto_eddsa_sign(*buf+35+len*4, priv, *buf, 35+len*4);
+	memcpy(*buf+2+len*4, pub, 32);
+	crypto_eddsa_sign(*buf+34+len*4, priv, *buf, 34+len*4);
 
-	return 99+len*4;
+	return 98+len*4;
 }
 
 int send_lookup_response(int s, char *pub, char *priv, uint32_t addr, uint8_t want, uint8_t f) {
@@ -88,20 +86,20 @@ int send_lookup_response(int s, char *pub, char *priv, uint32_t addr, uint8_t wa
 
 void parse_lookup_response(int s, char *pub, char *priv, struct icmp_echo *rp) {
 	uint8_t f = rp->data[1];
-	uint8_t peer_counts = rp->data[2];
+	uint8_t peers_len = (rp->data_len-98)/4;
 
-	char *pk = rp->data+3+4*peer_counts;
-	char *sig = rp->data+35+4*peer_counts;
+	char *pk = rp->data+2+4*peers_len;
+	char *sig = rp->data+34+4*peers_len;
 
-	if (crypto_eddsa_check(sig, pk, rp->data, 35+4*peer_counts) != 0) {
+	if (crypto_eddsa_check(sig, pk, rp->data, 34+4*peers_len) != 0) {
 		return;
 	}
 
 	new_peer(pk, ntohl(rp->iph.saddr), f, 0);
 
-	for (int i = 0; i < peer_counts; i++) {
+	for (int i = 0; i < peers_len; i++) {
 		uint32_t ip = 0;
-		memcpy(&ip, rp->data+3+4*i, 4);
+		memcpy(&ip, rp->data+2+4*i, 4);
 		new_peer(NULL, ntohl(ip), 0, ntohl(rp->iph.saddr));
 	}
 }
