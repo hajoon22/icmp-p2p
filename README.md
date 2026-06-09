@@ -33,7 +33,7 @@ A lightweight trust based P2P network built on top of ICMP Echo Request and Echo
 * signature: Ed25519 signature over `[type][free_slots][peer_count][peers][public_key]`.
 
 ### Message (type: 1)
-`[type (1 byte)][id (1 byte)][message (n bytes)][expiry (8 bytes)][signature (64 bytes)]`
+`[type (1 byte)][id (2 bytes)][message (n bytes)][expiry (8 bytes)][signature (64 bytes)]`
 
 * type: Protocol identifier.
 * id: Message identifier used for deduplication.
