@@ -26,8 +26,13 @@ static size_t build_lookup_request(char **buf, char *pub, char *priv, uint8_t wa
 int send_lookup_request(int s, char *pub, char *priv, uint32_t addr, uint8_t f) {
 	// build lookup request packet
 	char *buf = NULL;
+
 	uint32_t want = free_slots()*peer_trust(addr)/MAX_TRUST;
-	//printf("%d\n", want);
+	uint8_t unchecked = unchecked_slots();
+	if (want > unchecked) {
+	    want = unchecked;
+	}
+
 	size_t n = build_lookup_request(&buf, pub, priv, want, f);
 	if (n < 1) return -1;
 
