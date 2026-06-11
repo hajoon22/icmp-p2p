@@ -1,3 +1,4 @@
+//#include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,24 +7,28 @@
 #include "../icmp/icmp.h"
 #include "../peer/peer.h"
 #include "../monocypher/monocypher.h"
+#include "../../config.h"
 
-// [type:1][free slots:1][public key:32][signature:64]
-static size_t build_lookup_request(char **buf, char *pub, char *priv, uint8_t f) {
-	*buf = malloc(98);
+// [type:1][want:1][free slots:1][public key:32][signature:64]
+static size_t build_lookup_request(char **buf, char *pub, char *priv, uint8_t want, uint8_t f) {
+	*buf = malloc(99);
 	if (!*buf) return 0;
 
 	(*buf)[0] = LOOKUP; // lookup type
-	(*buf)[1] = f;
-	memcpy(*buf+2, pub, 32);
-	crypto_eddsa_sign(*buf+34, priv, *buf, 34);
+	(*buf)[1] = want; // want peers
+	(*buf)[2] = f; // free slots
+	memcpy(*buf+3, pub, 32);
+	crypto_eddsa_sign(*buf+35, priv, *buf, 35);
 
-	return 98;
+	return 99;
 }
 
 int send_lookup_request(int s, char *pub, char *priv, uint32_t addr, uint8_t f) {
 	// build lookup request packet
 	char *buf = NULL;
-	size_t n = build_lookup_request(&buf, pub, priv, f);
+	uint32_t want = free_slots()*peer_trust(addr)/MAX_TRUST;
+	//printf("%d\n", want);
+	size_t n = build_lookup_request(&buf, pub, priv, want, f);
 	if (n < 1) return -1;
 
 	// lookup request to bootstrap
@@ -34,18 +39,19 @@ int send_lookup_request(int s, char *pub, char *priv, uint32_t addr, uint8_t f) 
 }
 
 void parse_lookup_request(int s, char *pub, char *priv, struct icmp_echo *rp) {
-	uint8_t f = rp->data[1]; // free slots
-	char *pk = rp->data+2;
-	char *sig = rp->data+34;
+	uint8_t want = rp->data[1]; // want peers
+	uint8_t f = rp->data[2]; // free slots
+	char *pk = rp->data+3;
+	char *sig = rp->data+35;
 	
-	if (crypto_eddsa_check(sig, pk, rp->data, 34) != 0) {
+	if (crypto_eddsa_check(sig, pk, rp->data, 35) != 0) {
 		return;
 	}
 
 	new_peer(pk, ntohl(rp->iph.saddr), f, 0);
 	
 	// send lookup response
-	send_lookup_response(s, pub, priv, ntohl(rp->iph.saddr), f, free_slots());
+	send_lookup_response(s, pub, priv, ntohl(rp->iph.saddr), want, free_slots());
 }
 
 // [type:1][free_slots:1][peers:n][public key:32][signature:64]
