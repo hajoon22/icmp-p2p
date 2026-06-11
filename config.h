@@ -1,11 +1,12 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define PEER_TIMEOUT 600 // second
-#define PEER_REQUEST_INTERVAL 60 // second
+#define PEER_TIMEOUT 120 // second
+#define PEER_REQUEST_INTERVAL 30 // second
 
 #define MAX_PEERS 50
-#define MAX_MESSAGE_HISTORY 10
+#define MAX_MESSAGE_HISTORY 60
+#define MAX_UNCHECKED_PEERS 8
 
 #define DEFAULT_TRUST 50
 
