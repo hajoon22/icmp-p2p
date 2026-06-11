@@ -33,13 +33,14 @@ A lightweight trust based P2P network built on top of ICMP Echo Request and Echo
 * signature: Ed25519 signature over `[type][free_slots][peers][public_key]`.
 
 ### Message (type: 1, echo request)
-`[type (1 byte)][id (2 bytes)][message (n bytes)][expiry (8 bytes)][signature (64 bytes)]`
+`[type (1 byte)][id (2 bytes)][message (n bytes)][fanout (1 byte)][expiry (8 bytes)][signature (64 bytes)]`
 
 * type: Protocol identifier.
 * id: Message identifier used for deduplication.
 * message: Message payload.
+* fanout: Maximum rebroadcast targets. A value of 0 means all checked peers.
 * expiry: Expiration time as an 8-byte big-endian Unix timestamp.
-* signature: Ed25519 signature over `[type][id][message][expiry]`.
+* signature: Ed25519 signature over `[type][id][message][fanout][expiry]`.
 
 ## Message Propagation
 
@@ -48,7 +49,7 @@ A lightweight trust based P2P network built on top of ICMP Echo Request and Echo
 3. Expired messages are discarded.
 4. Duplicate message IDs are ignored.
 5. Valid messages are printed to stdout.
-6. The message is rebroadcast to all checked peers.
+6. The message is rebroadcast according to the fanout value.
 
 ## Peer States
 
