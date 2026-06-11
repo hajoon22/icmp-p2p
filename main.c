@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
 					parse_lookup_request(s, pub, priv, rp);
 				}
 
-				if (rp->data_len >= 74 && rp->data[0] == MESSAGE) {
+				if (rp->data_len >= 76 && rp->data[0] == MESSAGE) {
 					parse_message(s, rp);
 				}
 			}
