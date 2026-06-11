@@ -28,6 +28,7 @@ int main(int argc, char *argv[]) {
 
 	// send lookup request packet to bootstraps
 	for (int i = 1; i < argc; i++) {
+		new_peer(NULL, ntohl(inet_addr(argv[i])), 0, 0);
 		send_lookup_request(s, pub, priv, ntohl(inet_addr(argv[i])), free_slots());
 	}
 
