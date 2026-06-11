@@ -73,7 +73,7 @@ static char *build_echo_packet(uint8_t type, char *data, size_t len) {
 
     struct icmphdr *icmph = (struct icmphdr *)buf;
     icmph->type = type; // echo type (0 = reply, 8 = request)
-    icmph->un.echo.id = random_int(65535);
+    icmph->un.echo.id = htons(random_int(65535));
     icmph->un.echo.sequence = htons(1);
     
     memcpy(buf+sizeof(struct icmphdr), data, len);
