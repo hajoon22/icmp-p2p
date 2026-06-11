@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
 			} 
 
 			if (rp->icmph.type == 8) {
-				if (rp->data_len == 98 && rp->data[0] == LOOKUP) {
+				if (rp->data_len == 99 && rp->data[0] == LOOKUP) {
 					parse_lookup_request(s, pub, priv, rp);
 				}
 
