@@ -14,7 +14,7 @@ A lightweight trust based P2P network built on top of ICMP Echo Request and Echo
 
 ## Protocol
 
-### Lookup Request (type: 0)
+### Lookup Request (type: 0, echo request)
 `[type (1 byte)][want (1 byte)][free_slots (1 byte)][public_key (32 bytes)][signature (64 bytes)]`
 
 * type: Protocol identifier.
@@ -23,7 +23,7 @@ A lightweight trust based P2P network built on top of ICMP Echo Request and Echo
 * public_key: Node public key.
 * signature: Ed25519 signature over `[type][want][free_slots][public_key]`.
 
-### Lookup Response (type: 0)
+### Lookup Response (type: 0, echo reply)
 `[type (1 byte)][free_slots (1 byte)][peers (n bytes)][public_key (32 bytes)][signature (64 bytes)]`
 
 * type: Protocol identifier.
@@ -33,7 +33,7 @@ A lightweight trust based P2P network built on top of ICMP Echo Request and Echo
 * public_key: Node public key.
 * signature: Ed25519 signature over `[type][free_slots][peers][public_key]`.
 
-### Message (type: 1)
+### Message (type: 1, echo request)
 `[type (1 byte)][id (2 bytes)][message (n bytes)][expiry (8 bytes)][signature (64 bytes)]`
 
 * type: Protocol identifier.
