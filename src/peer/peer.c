@@ -11,6 +11,7 @@
 #include "../utils/utils.h"
 
 static int next_index = 0;
+static size_t unchecked_peers = 0;
 static struct peer peers[MAX_PEERS];
 
 static void add_trust_score(uint32_t addr, int n) {
@@ -45,6 +46,10 @@ int peer_trust(uint32_t addr) {
 }
 
 static void update_peer(struct peer *p, char *pub, uint8_t fs) {
+    if (p->state != checked) {
+        unchecked_peers--;
+    }
+
     p->state = checked;
     p->free_slots = fs;
     p->last_seen = time(NULL);
@@ -60,12 +65,18 @@ static void update_peer(struct peer *p, char *pub, uint8_t fs) {
 }
 
 static int add_peer(char *pub, uint32_t addr, uint8_t fs, uint32_t source) {
+    struct in_addr a = {
+        .s_addr = htonl(addr)
+    };
+
     if (next_index >= MAX_PEERS) {
-        return -1; // max
+        printf("table full: addr=%s free=%u source=%u next_index=%d\n", inet_ntoa(a), fs, source, next_index);
+        return -1;
     } else if (pub && fs < 1) {
+        printf("no free slots: addr=%s free=%u next_index=%d\n", inet_ntoa(a), fs, next_index);
         return 0;
     }
-    
+
     peers[next_index] = (struct peer) {
         .state = unchecked,
         .address = addr,
@@ -84,9 +95,8 @@ static int add_peer(char *pub, uint32_t addr, uint8_t fs, uint32_t source) {
     }
     next_index++;
 
-    struct in_addr a = {
-        .s_addr = htonl(addr)
-    };
+    if (!pub) unchecked_peers++;
+
     printf("added peer: addr=%s, free=%d\n", inet_ntoa(a), fs);
 
     return 0;
@@ -113,14 +123,26 @@ int new_peer(char *pub, uint32_t addr, uint8_t fs, uint32_t source) {
         }
     }
 
+    // unchecked slots are full
+    if (!pub && unchecked_peers+1 > MAX_UNCHECKED_PEERS) {
+        return 0;
+    }
+
     return add_peer(pub, addr, fs, source);
 }
 
 uint8_t free_slots(void) {
     uint8_t free = 0;
     free = MAX_PEERS-next_index;
-
     return free;
+}
+
+uint8_t unchecked_slots(void) {
+    if (unchecked_peers >= MAX_UNCHECKED_PEERS) {
+        return 0;
+    }
+
+    return MAX_UNCHECKED_PEERS-unchecked_peers;
 }
 
 uint32_t *get_peers(uint32_t dst, uint8_t count, uint8_t *len) {
@@ -137,6 +159,19 @@ uint32_t *get_peers(uint32_t dst, uint8_t count, uint8_t *len) {
         results[*len] = htonl(peers[i].address);
         (*len)++;
     }
+
+    if (*len < count) {
+        for (int i = 0; i < next_index && *len < count; i++) {
+            if (peers[i].free_slots != 0 || peers[i].state != checked || peers[i].address == dst) {
+                continue;
+            }
+
+            if (peers[i].trust <= MIN_TRUST) continue;
+
+            results[*len] = htonl(peers[i].address);
+            (*len)++;
+        }
+    }
     
     if (*len == 0) {
         free(results);
@@ -144,6 +179,17 @@ uint32_t *get_peers(uint32_t dst, uint8_t count, uint8_t *len) {
     }
 
     return results;
+}
+
+static void shuffle_peers(void) {
+    if (next_index == 0) return;
+
+    for (int i = 0; i < next_index; i++) {
+        int n = random_int(next_index-1);
+        struct peer tmp = peers[n];
+        peers[n] = peers[i];
+        peers[i] = tmp;
+    }
 }
 
 void broadcast_peers(int s, uint8_t fanout, char *data, size_t len) {
@@ -174,6 +220,8 @@ void broadcast_peers(int s, uint8_t fanout, char *data, size_t len) {
 }
 
 void handle_peers(int s, char *pub, char *priv) {
+    shuffle_peers();
+
     time_t now = time(NULL);
     for (int i = 0; i < next_index; i++) {
         struct peer *p = &peers[i];
@@ -197,6 +245,7 @@ void handle_peers(int s, char *pub, char *priv) {
         // check the timeout and removing the peer (10 min)
         if (now-p->last_seen >= PEER_TIMEOUT) {
             if (p->state == checking) {
+                unchecked_peers--;
                 add_trust_score(p->source, BAD_SOURCE_TRUST);
             }
             
