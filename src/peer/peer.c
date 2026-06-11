@@ -8,6 +8,7 @@
 #include "peer.h"
 #include "../../config.h"
 #include "../protocol/protocol.h"
+#include "../utils/utils.h"
 
 static int next_index = 0;
 static struct peer peers[MAX_PEERS];
@@ -145,13 +146,31 @@ uint32_t *get_peers(uint32_t dst, uint8_t count, uint8_t *len) {
     return results;
 }
 
-void broadcast_peers(int s, char *data, size_t len) {
+void broadcast_peers(int s, uint8_t fanout, char *data, size_t len) {
+    int index[MAX_PEERS], next = 0;
     for (int i = 0; i < next_index; i++) {
-        struct peer *p = &peers[i];
-        if (p->state == checked) {
-            send_echo_packet(s, 8, p->address, data, len);
+        if (peers[i].state == checked) {
+            index[next++] = i;
         }
     }
+    if (next == 0) return;
+
+    // all broadcast
+    if (fanout == 0 || next <= fanout) {
+        for (int i = 0; i < next; i++) {
+            send_echo_packet(s, 8, peers[index[i]].address, data, len);
+        }
+
+        return;
+    }
+
+    // broadcast random peers using fanout
+    for (int i = 0; i < fanout; i++) {
+        int n = random_int(next-1);
+        send_echo_packet(s, 8, peers[index[n]].address, data, len);
+
+        index[n] = index[--next];
+    } 
 }
 
 void handle_peers(int s, char *pub, char *priv) {
@@ -159,8 +178,7 @@ void handle_peers(int s, char *pub, char *priv) {
     for (int i = 0; i < next_index; i++) {
         struct peer *p = &peers[i];
         if (p->trust == BAN_TRUST) {
-            memmove(p, p+1, sizeof(struct peer)*(next_index-i-1));
-            next_index--;
+            peers[i] = peers[--next_index];
             i--;
 
             continue;    
@@ -182,8 +200,7 @@ void handle_peers(int s, char *pub, char *priv) {
                 add_trust_score(p->source, BAD_SOURCE_TRUST);
             }
             
-            memmove(p, p+1, sizeof(struct peer)*(next_index-i-1));
-            next_index--;
+            peers[i] = peers[--next_index];
             i--;
 
             continue;
