@@ -29,7 +29,7 @@ void handle_peers(int s, char *pub, char *priv);
 uint8_t free_slots(void);
 uint32_t *get_peers(uint32_t dst, uint8_t count, uint8_t *len);
 int new_peer(char *pub, uint32_t addr, uint8_t free_slots, uint32_t source);
-void broadcast_peers(int s, char *data, size_t len);
+void broadcast_peers(int s, uint8_t fanout, char *data, size_t len);
 int peer_trust(uint32_t addr);
 
 #endif
