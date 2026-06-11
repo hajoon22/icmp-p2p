@@ -18,6 +18,7 @@ A lightweight trust based P2P network built on top of ICMP Echo Request and Echo
 `[type (1 byte)][want (1 byte)][free_slots (1 byte)][public_key (32 bytes)][signature (64 bytes)]`
 
 * type: Protocol identifier.
+* want: Number of peers requested by the node. This value is dynamically adjusted based on the trust score of the destination peer.
 * free_slots: Number of available peer slots.
 * public_key: Node public key.
 * signature: Ed25519 signature over `[type][want][free_slots][public_key]`.
