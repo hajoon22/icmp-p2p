@@ -28,7 +28,6 @@ A lightweight trust based P2P network built on top of ICMP Echo Request and Echo
 
 * type: Protocol identifier.
 * free_slots: Number of available peer slots on the responding node.
-* peer_count: Number of peers included in the response.
 * peers: List of peer addresses.
 * public_key: Node public key.
 * signature: Ed25519 signature over `[type][free_slots][peers][public_key]`.
