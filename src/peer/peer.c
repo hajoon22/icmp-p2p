@@ -32,6 +32,17 @@ static void add_trust_score(uint32_t addr, int n) {
     }
 }
 
+int peer_trust(uint32_t addr) {
+    for (int i = 0; i < next_index; i++) {
+        struct peer *p = &peers[i];
+        if (p->address == addr) {
+            return p->trust;
+        }
+    }
+
+    return DEFAULT_TRUST;
+}
+
 static void update_peer(struct peer *p, char *pub, uint8_t fs) {
     p->state = checked;
     p->free_slots = fs;
