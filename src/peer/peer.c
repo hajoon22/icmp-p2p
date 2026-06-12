@@ -152,10 +152,10 @@ uint32_t *get_peers(uint32_t dst, uint8_t count, uint8_t *len) {
     if (!results) return NULL;
 
     for (int i = 0; i < next_index && *len < count; i++) {
-        if (peers[i].is_bootstrap || peers[i].free_slots == 0 || peers[i].state != checked || peers[i].address == dst) {
-            continue;
-        }
-
+        if (peers[i].is_bootstrap) continue;
+        if (peers[i].free_slots == 0) continue;
+        if (peers[i].state != checked) continue;
+        if (peers[i].address == dst) continue;
         if (peers[i].trust <= MIN_TRUST) continue;
 
         results[*len] = htonl(peers[i].address);
@@ -164,10 +164,10 @@ uint32_t *get_peers(uint32_t dst, uint8_t count, uint8_t *len) {
 
     if (*len < count) {
         for (int i = 0; i < next_index && *len < count; i++) {
-            if (peers[i].is_bootstrap || peers[i].free_slots != 0 || peers[i].state != checked || peers[i].address == dst) {
-                continue;
-            }
-
+            if (peers[i].is_bootstrap) continue;
+            if (peers[i].free_slots != 0) continue;
+            if (peers[i].state != checked) continue;
+            if (peers[i].address == dst) continue;
             if (peers[i].trust <= MIN_TRUST) continue;
 
             results[*len] = htonl(peers[i].address);
