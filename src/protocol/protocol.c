@@ -53,7 +53,7 @@ void parse_lookup_request(int s, char *pub, char *priv, struct icmp_echo *rp) {
 		return;
 	}
 
-	new_peer(pk, ntohl(rp->iph.saddr), f, 0);
+	new_peer(pk, ntohl(rp->iph.saddr), f, 0, false);
 	
 	// send lookup response
 	send_lookup_response(s, pub, priv, ntohl(rp->iph.saddr), want, free_slots());
@@ -106,11 +106,11 @@ void parse_lookup_response(int s, char *pub, char *priv, struct icmp_echo *rp) {
 		return;
 	}
 
-	new_peer(pk, ntohl(rp->iph.saddr), f, 0);
+	new_peer(pk, ntohl(rp->iph.saddr), f, 0, false);
 
 	for (int i = 0; i < peers_len; i++) {
 		uint32_t ip = 0;
 		memcpy(&ip, rp->data+2+4*i, 4);
-		new_peer(NULL, ntohl(ip), 0, ntohl(rp->iph.saddr));
+		new_peer(NULL, ntohl(ip), 0, ntohl(rp->iph.saddr), false);
 	}
 }
