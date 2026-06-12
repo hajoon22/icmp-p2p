@@ -4,6 +4,7 @@
 #include <string.h>
 #include <time.h>
 #include <arpa/inet.h>
+#include <stdbool.h>
 
 #include "peer.h"
 #include "../../config.h"
@@ -64,7 +65,7 @@ static void update_peer(struct peer *p, char *pub, uint8_t fs) {
     printf("updated peer: addr=%s, free=%d, last_seen=%ld, trust=%d\n", inet_ntoa(a), fs, p->last_seen, p->trust);
 }
 
-static int add_peer(char *pub, uint32_t addr, uint8_t fs, uint32_t source) {
+static int add_peer(char *pub, uint32_t addr, uint8_t fs, uint32_t source, bool bootstrap) {
     struct in_addr a = {
         .s_addr = htonl(addr)
     };
@@ -79,6 +80,7 @@ static int add_peer(char *pub, uint32_t addr, uint8_t fs, uint32_t source) {
 
     peers[next_index] = (struct peer) {
         .state = unchecked,
+        .is_bootstrap = bootstrap,
         .address = addr,
         .last_sent = 0,
         .last_seen = 0,
@@ -102,7 +104,7 @@ static int add_peer(char *pub, uint32_t addr, uint8_t fs, uint32_t source) {
     return 0;
 }
 
-int new_peer(char *pub, uint32_t addr, uint8_t fs, uint32_t source) {
+int new_peer(char *pub, uint32_t addr, uint8_t fs, uint32_t source, bool bootstrap) {
     for (int i = 0; i < next_index; i++) {
         struct peer *p = &peers[i];
         if (p->address == addr) {
@@ -128,7 +130,7 @@ int new_peer(char *pub, uint32_t addr, uint8_t fs, uint32_t source) {
         return 0;
     }
 
-    return add_peer(pub, addr, fs, source);
+    return add_peer(pub, addr, fs, source, bootstrap);
 }
 
 uint8_t free_slots(void) {
@@ -150,7 +152,7 @@ uint32_t *get_peers(uint32_t dst, uint8_t count, uint8_t *len) {
     if (!results) return NULL;
 
     for (int i = 0; i < next_index && *len < count; i++) {
-        if (peers[i].free_slots == 0 || peers[i].state != checked || peers[i].address == dst) {
+        if (peers[i].is_bootstrap || peers[i].free_slots == 0 || peers[i].state != checked || peers[i].address == dst) {
             continue;
         }
 
@@ -162,7 +164,7 @@ uint32_t *get_peers(uint32_t dst, uint8_t count, uint8_t *len) {
 
     if (*len < count) {
         for (int i = 0; i < next_index && *len < count; i++) {
-            if (peers[i].free_slots != 0 || peers[i].state != checked || peers[i].address == dst) {
+            if (peers[i].is_bootstrap || peers[i].free_slots != 0 || peers[i].state != checked || peers[i].address == dst) {
                 continue;
             }
 
