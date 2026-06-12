@@ -97,6 +97,8 @@ int send_lookup_response(int s, char *pub, char *priv, uint32_t addr, uint8_t wa
 
 void parse_lookup_response(int s, char *pub, char *priv, struct icmp_echo *rp) {
 	uint8_t f = rp->data[1];
+
+	if ((rp->data_len-98)%4 != 0) return;
 	uint8_t peers_len = (rp->data_len-98)/4;
 
 	char *pk = rp->data+2+4*peers_len;
