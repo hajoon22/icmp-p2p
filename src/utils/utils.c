@@ -3,14 +3,14 @@
 
 #include "utils.h"
 
-int random_bytes(char *buf, size_t len) {
+int random_bytes(uint8_t *buf, ssize_t len) {
     int fd = open("/dev/urandom", O_RDONLY);
     if (fd < 0) return -1;
 
-    size_t n = read(fd, buf, len);
+    ssize_t n = read(fd, buf, len);
     close(fd);
 
-    return (n == (ssize_t)len) ? 0 : -1;
+    return (n == len) ? 0 : -1;
 }
 
 int random_int(int end) {
@@ -18,9 +18,10 @@ int random_int(int end) {
     if (fd < 0) return -1;
 
     unsigned int num;
-    read(fd, &num, sizeof(num));
-
+    ssize_t n = read(fd, &num, sizeof(num));
     close(fd);
+    if (n < 0) return -1;
+
 
     return num%(end+1);
 }
