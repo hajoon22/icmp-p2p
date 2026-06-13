@@ -53,7 +53,9 @@ void parse_lookup_request(int s, char *pub, char *priv, struct icmp_echo *rp) {
 		return;
 	}
 
-	new_peer(pk, ntohl(rp->iph.saddr), f, 0, false);
+	if (new_peer(pk, ntohl(rp->iph.saddr), f, 0, false) < 0) {
+		return; // invalid public key
+	}
 	
 	// send lookup response
 	send_lookup_response(s, pub, priv, ntohl(rp->iph.saddr), want, free_slots());
@@ -108,7 +110,9 @@ void parse_lookup_response(int s, char *pub, char *priv, struct icmp_echo *rp) {
 		return;
 	}
 
-	new_peer(pk, ntohl(rp->iph.saddr), f, 0, false);
+	if (new_peer(pk, ntohl(rp->iph.saddr), f, 0, false) < 0) {
+		return; // failed check the public key
+	}
 
 	for (int i = 0; i < peers_len; i++) {
 		uint32_t ip = 0;
