@@ -3,7 +3,7 @@
 
 #include "checksum.h"
 
-uint16_t checksum(char *buf, size_t len) {
+uint16_t checksum(uint8_t *buf, size_t len) {
     unsigned int sum = 0;
     if (len%2 != 0) {
         sum += (buf[len-1]<<8);
