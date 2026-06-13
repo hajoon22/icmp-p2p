@@ -1,6 +1,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <unistd.h>
 #include <stdint.h>
 
 int random_int(int end);
