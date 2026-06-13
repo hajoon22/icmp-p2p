@@ -17,9 +17,8 @@
 
 int main(int argc, char *argv[]) {
 	// generate random seed and public/private key
-	char seed[32], pub[32], priv[64];
-	int n = random_bytes(seed, 32);
-	if (n < 0) return n;
+	uint8_t seed[32], pub[32], priv[64];
+	if (random_bytes(seed, 32) < 0) return -1;
 
 	crypto_eddsa_key_pair(priv, pub, seed);
 
