@@ -72,7 +72,7 @@ static int add_peer(char *pub, uint32_t addr, uint8_t fs, uint32_t source, bool 
 
     if (next_index >= MAX_PEERS) {
         printf("table full: addr=%s free=%u source=%u next_index=%d\n", inet_ntoa(a), fs, source, next_index);
-        return -1;
+        return 0;
     } else if (pub && fs < 1) {
         printf("no free slots: addr=%s free=%u next_index=%d\n", inet_ntoa(a), fs, next_index);
         return 0;
