@@ -18,12 +18,12 @@ struct icmp_echo {
     struct iphdr iph;
     struct icmphdr icmph;
 
-    char *data;
+    uint8_t *data;
     size_t data_len;
 };
 
 void deinit_icmp_echo(struct icmp_echo *rp);
 struct icmp_echo *read_icmp_echo(int s);
-int send_echo_packet(int s, uint8_t type, uint32_t dst, char *data, size_t len);
+int send_echo_packet(int s, uint8_t type, uint32_t dst, uint8_t *data, size_t len);
 
 #endif
