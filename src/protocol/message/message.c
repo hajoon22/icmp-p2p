@@ -24,7 +24,7 @@ void parse_message(int s, struct icmp_echo *rp) {
     memcpy(&expiry, message+message_len+1, 8);
     expiry = be64toh(expiry);
     
-    char *signature = message+message_len+9;
+    uint8_t *signature = message+message_len+9;
 
     // check the signature
     if (crypto_eddsa_check(signature, admin_pub, rp->data, message_len+12) != 0) {
