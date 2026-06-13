@@ -148,6 +148,8 @@ uint8_t unchecked_slots(void) {
 }
 
 uint32_t *get_peers(uint32_t dst, uint8_t count, uint8_t *len) {
+    if (count == 0) return NULL;
+
     uint32_t *results = malloc(sizeof(uint32_t)*count);
     if (!results) return NULL;
 
