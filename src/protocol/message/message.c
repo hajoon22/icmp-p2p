@@ -2,6 +2,7 @@
 #include <time.h>
 #include <stdint.h>
 #include <string.h>
+#include <arpa/inet.h>
 
 #include "../../../config.h"
 #include "../../icmp/icmp.h"
