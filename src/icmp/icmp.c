@@ -30,11 +30,16 @@ struct icmp_echo *read_icmp_echo(int s) {
         }
 
         struct iphdr *iph = (struct iphdr *)buf;
+        if (n < sizeof(struct iphdr)) continue;
+        if (ntohs(iph->tot_len) != n) continue;
+        if (iph->ihl*4 < sizeof(struct iphdr)) continue;
+        if (iph->ihl*4+sizeof(struct icmphdr) > n) continue;
+
         struct icmphdr *icmph = (struct icmphdr*)(buf+(iph->ihl*4));
         
         // 0 or 8 (echo reply or request)
         if (icmph->type == 0 || icmph->type == 8) {
-            char *payload = (char *)(icmph+1);
+            uint8_t *payload = (uint8_t *)(icmph+1);
             int len = ntohs(iph->tot_len)-(sizeof(struct icmphdr)+iph->ihl*4);
             if (len <= 0) {
                 continue;
@@ -45,7 +50,7 @@ struct icmp_echo *read_icmp_echo(int s) {
             }
 
             // allocate heap buffer for payload
-            char *data = calloc(1, len);
+            uint8_t *data = calloc(1, len);
             if (!data) {
                 continue;
             }
@@ -67,8 +72,8 @@ struct icmp_echo *read_icmp_echo(int s) {
     return rp;
 }
 
-static char *build_echo_packet(uint8_t type, char *data, size_t len) {
-    char *buf = calloc(1, len+sizeof(struct icmphdr));
+static uint8_t *build_echo_packet(uint8_t type, uint8_t *data, size_t len) {
+    uint8_t *buf = calloc(1, len+sizeof(struct icmphdr));
     if (!buf) return NULL;
 
     struct icmphdr *icmph = (struct icmphdr *)buf;
@@ -82,13 +87,12 @@ static char *build_echo_packet(uint8_t type, char *data, size_t len) {
     return buf;
 }
 
-
-int send_echo_packet(int s, uint8_t type, uint32_t dst, char *data, size_t len) {
+int send_echo_packet(int s, uint8_t type, uint32_t dst, uint8_t *data, size_t len) {
     if (type != 0 && type != 8) {
         return ICMP_UNKNOWN_TYPE;
     }
     
-    char *buf = build_echo_packet(type, data, len);
+    uint8_t *buf = build_echo_packet(type, data, len);
     if (!buf) return ICMP_ERROR_BUILD;
 
     struct sockaddr_in sin;
