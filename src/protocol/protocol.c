@@ -10,7 +10,7 @@
 #include "../../config.h"
 
 // [type:1][want:1][free slots:1][public key:32][signature:64]
-static size_t build_lookup_request(char **buf, char *pub, char *priv, uint8_t want, uint8_t f) {
+static size_t build_lookup_request(uint8_t **buf, uint8_t *pub, uint8_t *priv, uint8_t want, uint8_t f) {
 	*buf = malloc(99);
 	if (!*buf) return 0;
 
@@ -23,11 +23,11 @@ static size_t build_lookup_request(char **buf, char *pub, char *priv, uint8_t wa
 	return 99;
 }
 
-int send_lookup_request(int s, char *pub, char *priv, uint32_t addr, uint8_t f) {
+int send_lookup_request(int s, uint8_t *pub, uint8_t *priv, uint32_t addr, uint8_t f) {
 	// build lookup request packet
-	char *buf = NULL;
+	uint8_t *buf = NULL;
 
-	uint32_t want = free_slots()*peer_trust(addr)/MAX_TRUST;
+	uint8_t want = free_slots()*peer_trust(addr)/MAX_TRUST;
 	uint8_t unchecked = unchecked_slots();
 	if (want > unchecked) {
 	    want = unchecked;
@@ -43,11 +43,11 @@ int send_lookup_request(int s, char *pub, char *priv, uint32_t addr, uint8_t f) 
 	return 0;
 }
 
-void parse_lookup_request(int s, char *pub, char *priv, struct icmp_echo *rp) {
+void parse_lookup_request(int s, uint8_t *pub, uint8_t *priv, struct icmp_echo *rp) {
 	uint8_t want = rp->data[1]; // want peers
 	uint8_t f = rp->data[2]; // free slots
-	char *pk = rp->data+3;
-	char *sig = rp->data+35;
+	uint8_t *pk = rp->data+3;
+	uint8_t *sig = rp->data+35;
 	
 	if (crypto_eddsa_check(sig, pk, rp->data, 35) != 0) {
 		return;
@@ -63,7 +63,7 @@ void parse_lookup_request(int s, char *pub, char *priv, struct icmp_echo *rp) {
 
 // [type:1][free_slots:1][peers:n][public key:32][signature:64]
 // peer entry: [ip:4]
-static size_t build_lookup_response(uint32_t dst, char **buf, char *pub, char *priv, uint8_t want, uint8_t f) {
+static size_t build_lookup_response(uint32_t dst, uint8_t **buf, uint8_t *pub, uint8_t *priv, uint8_t want, uint8_t f) {
 	uint8_t len = 0;
 	uint32_t *lists = get_peers(dst, want, &len);
 
@@ -86,8 +86,8 @@ static size_t build_lookup_response(uint32_t dst, char **buf, char *pub, char *p
 	return 98+len*4;
 }
 
-int send_lookup_response(int s, char *pub, char *priv, uint32_t addr, uint8_t want, uint8_t f) {
-	char *buf = NULL;
+int send_lookup_response(int s, uint8_t *pub, uint8_t *priv, uint32_t addr, uint8_t want, uint8_t f) {
+	uint8_t *buf = NULL;
 	size_t n = build_lookup_response(addr, &buf, pub, priv, want, f);
 	if (n < 1) return -1;
 
@@ -97,14 +97,14 @@ int send_lookup_response(int s, char *pub, char *priv, uint32_t addr, uint8_t wa
 	return 0;
 }
 
-void parse_lookup_response(int s, char *pub, char *priv, struct icmp_echo *rp) {
+void parse_lookup_response(int s, uint8_t *pub, uint8_t *priv, struct icmp_echo *rp) {
 	uint8_t f = rp->data[1];
 
 	if ((rp->data_len-98)%4 != 0) return;
 	uint8_t peers_len = (rp->data_len-98)/4;
 
-	char *pk = rp->data+2+4*peers_len;
-	char *sig = rp->data+34+4*peers_len;
+	uint8_t *pk = rp->data+2+4*peers_len;
+	uint8_t *sig = rp->data+34+4*peers_len;
 
 	if (crypto_eddsa_check(sig, pk, rp->data, 34+4*peers_len) != 0) {
 		return;
