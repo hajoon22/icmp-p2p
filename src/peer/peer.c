@@ -53,8 +53,10 @@ static void update_peer(struct peer *p, uint8_t *pub, uint8_t fs) {
 
     p->state = checked;
     p->free_slots = fs;
+    p->last_sent = time(NULL);
     p->last_seen = time(NULL);
-    memcpy(p->pub_key, pub, 32);
+
+    if (pub) memcpy(p->pub_key, pub, 32);
 
     add_trust_score(p->address, GOOD_PEER_TRUST);
     add_trust_score(p->source, GOOD_SOURCE_TRUST);
@@ -107,7 +109,7 @@ int new_peer(uint8_t *pub, uint32_t addr, uint8_t fs, uint32_t source, bool boot
             if (!pub) return 0;
             if (p->state == checked) {
                 if (memcmp(p->pub_key, pub, 32) == 0) {
-                    update_peer(p, p->pub_key, fs);
+                    update_peer(p, NULL, fs);
                     return 0;    
                 }
 
@@ -186,6 +188,8 @@ static void shuffle_peers(void) {
 
     for (int i = 0; i < next_index; i++) {
         int n = random_int(next_index-1);
+        if (n < 0) continue;
+
         struct peer tmp = peers[n];
         peers[n] = peers[i];
         peers[i] = tmp;
@@ -213,8 +217,12 @@ void broadcast_peers(int s, uint8_t fanout, uint8_t *data, size_t len) {
     // broadcast random peers using fanout
     for (int i = 0; i < fanout; i++) {
         int n = random_int(next-1);
-        send_echo_packet(s, 8, peers[index[n]].address, data, len);
+        if (n < 0) {
+            i--;
+            continue;
+        }
 
+        send_echo_packet(s, 8, peers[index[n]].address, data, len);
         index[n] = index[--next];
     } 
 }
@@ -226,36 +234,38 @@ void handle_peers(int s, uint8_t *pub, uint8_t *priv) {
     for (int i = 0; i < next_index; i++) {
         struct peer *p = &peers[i];
         if (p->trust == BAN_TRUST) {
-            peers[i] = peers[--next_index];
-            i--;
-
-            continue;    
-        }
-        
-        
-        if (p->state == unchecked && p->last_sent == 0) {
-            p->state = checking;
-            p->last_sent = time(NULL);
-            send_lookup_request(s, pub, priv, p->address, MAX_PEERS-next_index);
-
+            peers[i--] = peers[--next_index];
             continue;
         }
 
-        // check the timeout and removing the peer (10 min)
-        if (p->state == checking && now-p->last_sent >= PEER_TIMEOUT) {   
-            unchecked_peers--;
-            add_trust_score(p->source, BAD_SOURCE_TRUST);
-        
-            peers[i] = peers[--next_index];
-            i--;
+       if (now-p->last_seen >= PEER_REQUEST_INTERVAL && now-p->last_sent >= PEER_REQUEST_INTERVAL) {
+            if (p->state == unchecked) {
+                p->state = checking;
+                p->last_sent = time(NULL);
+                send_lookup_request(s, pub, priv, p->address, MAX_PEERS-next_index);
 
-            continue;
-        }
+                continue;
+            }
 
-        // check the last seen
-        if (now-p->last_seen >= PEER_REQUEST_INTERVAL && now-p->last_sent >= PEER_REQUEST_INTERVAL) {
-            p->last_sent = time(NULL);
-            send_lookup_request(s, pub, priv, p->address, MAX_PEERS-next_index);
-        }
+            if (p->state == checking && now-p->last_sent >= PEER_TIMEOUT) {
+                unchecked_peers--;
+                add_trust_score(p->source, BAD_SOURCE_TRUST);
+                peers[i--] = peers[--next_index];
+          
+                continue;
+            }
+            
+            if (p->state == checked) {
+                if (now-p->last_seen >= PEER_TIMEOUT) {
+                    add_trust_score(p->source, BAD_SOURCE_TRUST);
+                    peers[i--] = peers[--next_index];
+            
+                    continue;      
+                }
+
+                p->last_sent = time(NULL);
+                send_lookup_request(s, pub, priv, p->address, MAX_PEERS-next_index);
+            }
+       }
     }
 }
