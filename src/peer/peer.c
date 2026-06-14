@@ -208,7 +208,13 @@ void broadcast_peers(int s, uint8_t fanout, uint8_t *data, size_t len) {
     // all broadcast
     if (fanout == 0 || next <= fanout) {
         for (int i = 0; i < next; i++) {
-            send_echo_packet(s, 8, peers[index[i]].address, data, len);
+            for (int j = 0; j < MAX_RETRY; j++) {
+                if (send_echo_packet(s, 8, peers[index[i]].address, data, len) < 0) {
+                    continue;
+                }    
+
+                break;
+            }
         }
 
         return;
@@ -222,7 +228,14 @@ void broadcast_peers(int s, uint8_t fanout, uint8_t *data, size_t len) {
             continue;
         }
 
-        send_echo_packet(s, 8, peers[index[n]].address, data, len);
+        for (int i = 0; i < MAX_RETRY; i++) {
+            if (send_echo_packet(s, 8, peers[index[n]].address, data, len) < 0) {
+                continue;
+            }
+
+            break;
+        }
+        
         index[n] = index[--next];
     } 
 }
