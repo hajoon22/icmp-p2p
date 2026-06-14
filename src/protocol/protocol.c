@@ -101,7 +101,8 @@ void parse_lookup_response(int s, uint8_t *pub, uint8_t *priv, struct icmp_echo 
 	uint8_t f = rp->data[1];
 
 	if ((rp->data_len-98)%4 != 0) return;
-	uint8_t peers_len = (rp->data_len-98)/4;
+	size_t peers_len = (rp->data_len-98)/4;
+	if (MAX_PEERS < peers_len) return;
 
 	uint8_t *pk = rp->data+2+4*peers_len;
 	uint8_t *sig = rp->data+34+4*peers_len;
