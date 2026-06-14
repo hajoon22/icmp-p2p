@@ -261,11 +261,20 @@ void handle_peers(int s, uint8_t *pub, uint8_t *priv) {
             }
 
             if (p->state == checking && now-p->last_sent >= PEER_TIMEOUT) {
-                unchecked_peers--;
-                add_trust_score(p->source, BAD_SOURCE_TRUST);
-                peers[i--] = peers[--next_index];
-          
-                continue;
+                if (now-p->last_sent >= PEER_REQUEST_INTERVAL) {
+                    p->last_sent = time(NULL);
+                    send_lookup_request(s, pub, priv, p->address, MAX_PEERS-next_index);
+
+                    continue;   
+                }
+                
+                if (now-p->last_sent >= PEER_TIMEOUT) {
+                    unchecked_peers--;
+                    add_trust_score(p->source, BAD_SOURCE_TRUST);
+                    peers[i--] = peers[--next_index];
+                
+                    continue;
+                }
             }
             
             if (p->state == checked) {
