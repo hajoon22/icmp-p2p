@@ -27,21 +27,22 @@ An ICMP based network protocol for peer discovery, peer exchange, and signed mes
 * signature: Ed25519 signature over `[type][free_slots][peers][public_key]`.
 
 **Message (ICMP Echo Request)**    
-`[type (1 byte)][id (2 bytes)][message (n bytes)][fanout (1 byte)][expiry (8 bytes)][signature (64 bytes)]`
+`[type (1 byte)][message (n bytes)][fanout (1 byte)][expiry (8 bytes)][signature (64 bytes)]`
 * type: Protocol identifier.
-* id: Message identifier used for deduplication.
 * message: Message payload.
 * fanout: Maximum rebroadcast targets. A value of 0 broadcasts to all checked peers.
 * expiry: Big endian Unix timestamp.
-* signature: Ed25519 signature over `[type][id][message][fanout][expiry]`.
+* signature: Ed25519 signature over `[type][message][fanout][expiry]`.
+The first 8 bytes of the verified signature are used internally as a message identifier for duplicate suppression.
 
 ## Message Processing
 1. Receive a Message packet.
-2. Verify the message signature using the configured admin public key.
+2. Verify the message signature using the configured administrator public key.
 3. Discard expired messages.
-4. Discard duplicate message identifiers.
-5. Print the message payload.
-6. Rebroadcast the message according to the fanout value.
+4. Derive a message identifier from the first 8 bytes of the verified signature.
+5. Discard messages that have already been processed.
+6. Print the message payload.
+7. Rebroadcast the message according to the fanout value.
 
 ## Peer States
 | State | Description |
