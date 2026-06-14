@@ -18,7 +18,7 @@ An ICMP based network protocol for peer discovery, peer exchange, and signed mes
 * public_key: Sender public key.
 * signature: Ed25519 signature over `[type][want][free_slots][public_key]`.
 
-**Lookup Response (ICMP Echo Reply)**
+**Lookup Response (ICMP Echo Reply)**   
 `[type (1 byte)][free_slots (1 byte)][peers (4*n bytes)][public_key (32 bytes)][signature (64 bytes)]`
 * type: Protocol identifier.
 * free_slots: Number of available peer slots on the sender.
@@ -26,7 +26,7 @@ An ICMP based network protocol for peer discovery, peer exchange, and signed mes
 * public_key: Sender public key.
 * signature: Ed25519 signature over `[type][free_slots][peers][public_key]`.
 
-**Message (ICMP Echo Request)**
+**Message (ICMP Echo Request)**    
 `[type (1 byte)][id (2 bytes)][message (n bytes)][fanout (1 byte)][expiry (8 bytes)][signature (64 bytes)]`
 * type: Protocol identifier.
 * id: Message identifier used for deduplication.
