@@ -1,80 +1,79 @@
 ## ICMP P2P
-A lightweight trust based P2P network built on top of ICMP Echo Request and Echo Reply packets.
+An ICMP based network protocol for peer discovery, peer exchange, and signed message propagation.
 
 ## Features
-
-1. Discovers peers through a bootstrap node.
-2. Expands the peer list using information received from other peers.
-3. Automatically verifies newly discovered peers.
-4. Periodically refreshes peer information.
-5. Removes inactive peers after a timeout period.
-6. Exchanges peer information through ICMP payloads.
-7. Broadcasts signed messages across the network.
-8. Maintains trust scores for peer selection and propagation.
+1. Discovers peers through bootstrap nodes.
+2. Exchanges peer information between peers.
+3. Verifies discovered peers using Ed25519 signatures.
+4. Maintains a peer table with periodic refresh and timeout handling.
+5. Broadcasts signed messages through the network.
+6. Maintains trust scores for peer selection.
 
 ## Protocol
-
-### Lookup Request (type: 0, echo request)
+**Lookup Request (ICMP Echo Request)**   
 `[type (1 byte)][want (1 byte)][free_slots (1 byte)][public_key (32 bytes)][signature (64 bytes)]`
-
 * type: Protocol identifier.
-* want: Number of peers requested by the node. This value is dynamically adjusted based on the trust score of the destination peer.
-* free_slots: Number of available peer slots.
-* public_key: Node public key.
+* want: Number of peer addresses requested.
+* free_slots: Number of available peer slots on the sender.
+* public_key: Sender public key.
 * signature: Ed25519 signature over `[type][want][free_slots][public_key]`.
 
-### Lookup Response (type: 0, echo reply)
-`[type (1 byte)][free_slots (1 byte)][peers (n bytes)][public_key (32 bytes)][signature (64 bytes)]`
-
+**Lookup Response (ICMP Echo Reply)**
+`[type (1 byte)][free_slots (1 byte)][peers (4*n bytes)][public_key (32 bytes)][signature (64 bytes)]`
 * type: Protocol identifier.
-* free_slots: Number of available peer slots on the responding node.
-* peers: List of peer addresses.
-* public_key: Node public key.
+* free_slots: Number of available peer slots on the sender.
+* peers: List of IPv4 peer addresses.
+* public_key: Sender public key.
 * signature: Ed25519 signature over `[type][free_slots][peers][public_key]`.
 
-### Message (type: 1, echo request)
+**Message (ICMP Echo Request)**
 `[type (1 byte)][id (2 bytes)][message (n bytes)][fanout (1 byte)][expiry (8 bytes)][signature (64 bytes)]`
-
 * type: Protocol identifier.
 * id: Message identifier used for deduplication.
 * message: Message payload.
-* fanout: Maximum rebroadcast targets. A value of 0 means all checked peers.
-* expiry: Expiration time as an 8-byte big-endian Unix timestamp.
-* signature: Ed25519 signature over `[type][id][message][fanout][expiry]`.
+* fanout: Maximum rebroadcast targets. A value of 0 broadcasts to all checked peers.
+* expiry: Big endian Unix timestamp.
+* signature: Ed25519 signature over ``[type][id][message][fanout][expiry]`.
 
-## Message Propagation
-
-1. A node receives a Message packet through an ICMP Echo Request.
-2. The packet signature is verified using the configured admin public key.
-3. Expired messages are discarded.
-4. Duplicate message IDs are ignored.
-5. Valid messages are printed to stdout.
-6. The message is rebroadcast according to the fanout value.
+## Message Processing
+1. Receive a Message packet.
+2. Verify the message signature using the configured admin public key.
+3. Discard expired messages.
+4. Discard duplicate message identifiers.
+5. Print the message payload.
+6. Rebroadcast the message according to the fanout value.
 
 ## Peer States
-
 | State | Description |
 |---------|-------------|
-| unchecked | Newly discovered peer |
-| checking | Peer verification in progress |
+| unchecked | Discovered but not verified |
+| checking | Lookup Request sent and waiting for a response |
 | checked | Verified peer |
 
 ## Trust
-
-- Peers are assigned a trust score.
+- New peers start with a default trust score.
 - Verified peers gain trust.
 - Peers that provide valid peer information gain trust.
-- Peers that provide invalid or inactive peers lose trust.
-- Low-trust peers are not shared with other peers.
-- Banned peers are removed from the peer list.
+- Peers that provide inactive peers lose trust.
+- Peers below the minimum trust threshold are not shared.
+- Peers reaching the ban threshold are removed.
+
+## Peer Selection
+Lookup Responses include peers that:
+- are in the `checked` state,
+- are not bootstrap peers,
+- have trust above the minimum trust threshold,
+- are not the requesting peer.
+  
+Peers with available slots are preferred before peers with no free slots.
 
 ## Peer Management
-
-- Peer information is updated whenever a Lookup Response is received.
-- Newly discovered peers are added as unchecked.
-- Lookup Requests are retransmitted after 60 seconds of inactivity.
-- Peers are removed after 10 minutes without a response.
+- Newly discovered peers are added as `unchecked`.
+- Unchecked peers are verified using Lookup Requests.
+- Peer information is updated when a valid Lookup Request or Lookup Response is received.
+- Lookup Requests are sent periodically to known peers.
+- Unresponsive peers are removed after the configured timeout.
+- Banned peers are removed from the peer table.
 
 ## Bootstrap
-
-Peer discovery begins by sending a Lookup Request to a bootstrap node.
+Peer discovery begins by sending Lookup Requests to one or more bootstrap nodes.
