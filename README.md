@@ -33,7 +33,7 @@ An ICMP based network protocol for peer discovery, peer exchange, and signed mes
 * message: Message payload.
 * fanout: Maximum rebroadcast targets. A value of 0 broadcasts to all checked peers.
 * expiry: Big endian Unix timestamp.
-* signature: Ed25519 signature over ``[type][id][message][fanout][expiry]`.
+* signature: Ed25519 signature over `[type][id][message][fanout][expiry]`.
 
 ## Message Processing
 1. Receive a Message packet.
