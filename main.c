@@ -38,6 +38,8 @@ int main(int argc, char *argv[]) {
 	};
 
 	while (1) {
+		handle_peers(s, pub, priv);
+		
 		int n = poll(&pfd, 1, 100);
 		if (n < 0) break;
 		
@@ -45,25 +47,11 @@ int main(int argc, char *argv[]) {
 			struct icmp_echo *rp = read_icmp_echo(s);
 			if (!rp) continue;
 
-			if (rp->icmph.type == 0) {
-				if (rp->data_len >= 98 && rp->data[0] == LOOKUP) {
-					parse_lookup_response(s, pub, priv, rp);
-				}
-			} 
-
-			if (rp->icmph.type == 8) {
-				if (rp->data_len == 99 && rp->data[0] == LOOKUP) {
-					parse_lookup_request(s, pub, priv, rp);
-				}
-
-				if (rp->data_len >= 76 && rp->data[0] == MESSAGE) {
-					parse_message(s, rp);
-				}
-			}
+			parse_message(s, rp);
+			parse_lookup_request(s, pub, priv, rp);
+			parse_lookup_response(s, pub, priv, rp); 
 
 			deinit_icmp_echo(rp);
 		}
-
-		handle_peers(s, pub, priv);
 	}
 }
