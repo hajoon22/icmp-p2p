@@ -44,6 +44,10 @@ int send_lookup_request(int s, uint8_t *pub, uint8_t *priv, uint32_t addr, uint8
 }
 
 void parse_lookup_request(int s, uint8_t *pub, uint8_t *priv, struct icmp_echo *rp) {
+	if (rp->icmph.type != 8) return;
+	if (rp->data_len != 99) return;
+	if (rp->data[0] != LOOKUP) return;
+	
 	uint8_t want = rp->data[1]; // want peers
 	uint8_t f = rp->data[2]; // free slots
 	uint8_t *pk = rp->data+3;
@@ -98,6 +102,10 @@ int send_lookup_response(int s, uint8_t *pub, uint8_t *priv, uint32_t addr, uint
 }
 
 void parse_lookup_response(int s, uint8_t *pub, uint8_t *priv, struct icmp_echo *rp) {
+	if (rp->icmph.type != 0) return;
+	if (rp->data_len < 98) return;
+	if (rp->data[0] != LOOKUP) return;
+
 	uint8_t f = rp->data[1];
 
 	if ((rp->data_len-98)%4 != 0) return;
