@@ -1,6 +1,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#define MAX_RETRY 3
+
 #define PEER_TIMEOUT 120 // second
 #define PEER_REQUEST_INTERVAL 30 // second
 
