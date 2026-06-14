@@ -37,7 +37,14 @@ int send_lookup_request(int s, uint8_t *pub, uint8_t *priv, uint32_t addr, uint8
 	if (n < 1) return -1;
 
 	// lookup request to bootstrap
-	send_echo_packet(s, 8, addr, buf, n);
+	for (int i = 0; i < MAX_RETRY; i++) {
+		if (send_echo_packet(s, 8, addr, buf, n) < 0) {
+			continue;
+		}
+
+		break;
+	}
+	
 	free(buf);
 
 	return 0;
@@ -47,7 +54,7 @@ void parse_lookup_request(int s, uint8_t *pub, uint8_t *priv, struct icmp_echo *
 	if (rp->icmph.type != 8) return;
 	if (rp->data_len != 99) return;
 	if (rp->data[0] != LOOKUP) return;
-	
+
 	uint8_t want = rp->data[1]; // want peers
 	uint8_t f = rp->data[2]; // free slots
 	uint8_t *pk = rp->data+3;
@@ -95,7 +102,14 @@ int send_lookup_response(int s, uint8_t *pub, uint8_t *priv, uint32_t addr, uint
 	size_t n = build_lookup_response(addr, &buf, pub, priv, want, f);
 	if (n < 1) return -1;
 
-	send_echo_packet(s, 0, addr, buf, n);
+	for (int i = 0; i < MAX_RETRY; i++) {
+		if (send_echo_packet(s, 0, addr, buf, n) < 0) {
+			continue;
+		}
+
+		break;
+	}
+
 	free(buf);
 
 	return 0;
