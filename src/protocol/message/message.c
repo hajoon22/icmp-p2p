@@ -10,16 +10,12 @@
 #include "../../monocypher/monocypher.h"
 
 static int next_index = 0;
-static uint16_t last_ids[MAX_MESSAGE_HISTORY];
+static uint64_t last_ids[MAX_MESSAGE_HISTORY];
 
-//[type:1][id:2][message:n][fanout:1][expiry:8][siagnature:64]
-void parse_message(int s, struct icmp_echo *rp) {
-    uint16_t id;
-    memcpy(&id, rp->data+1, sizeof(id));
-    id = ntohs(id);
-    
-    char *message = rp->data+3;
-    size_t message_len = rp->data_len-76;
+//[type:1][message:n][fanout:1][expiry:8][siagnature:64]
+void parse_message(int s, struct icmp_echo *rp) {    
+    char *message = rp->data+1;
+    size_t message_len = rp->data_len-74;
 
     uint64_t expiry;
     memcpy(&expiry, message+message_len+1, 8);
@@ -28,7 +24,7 @@ void parse_message(int s, struct icmp_echo *rp) {
     uint8_t *signature = message+message_len+9;
 
     // check the signature
-    if (crypto_eddsa_check(signature, admin_pub, rp->data, message_len+12) != 0) {
+    if (crypto_eddsa_check(signature, admin_pub, rp->data, message_len+10) != 0) {
 		return;
 	}
 
@@ -36,7 +32,9 @@ void parse_message(int s, struct icmp_echo *rp) {
     if (expiry < time(NULL)) {
         return;
     }
-    
+
+    uint64_t id;
+    memcpy(&id, signature, sizeof(id));
     for (int i = 0; i < MAX_MESSAGE_HISTORY; i++) {
         if (last_ids[i] == id) return;
     }
