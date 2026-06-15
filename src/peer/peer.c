@@ -87,6 +87,7 @@ static int add_peer(uint8_t *pub, uint32_t addr, uint8_t fs, uint32_t source, bo
         .pub_key = {0},
         .source = source,
         .trust = DEFAULT_TRUST,
+        .tried = 0,
     };
 
     if (pub) {
@@ -260,12 +261,15 @@ void handle_peers(int s, uint8_t *pub, uint8_t *priv) {
                 continue;
             }
 
-            if (p->state == checking && now-p->last_sent >= PEER_TIMEOUT) {
+            if (p->state == checking) {
                 if (now-p->last_sent >= PEER_REQUEST_INTERVAL) {
-                    p->last_sent = time(NULL);
-                    send_lookup_request(s, pub, priv, p->address, MAX_PEERS-next_index);
+                    if (p->tried+1 < MAX_RETRY) {
+                        p->tried++;
+                        p->last_sent = time(NULL);
+                        send_lookup_request(s, pub, priv, p->address, MAX_PEERS-next_index);
 
-                    continue;   
+                        continue; 
+                    }  
                 }
                 
                 if (now-p->last_sent >= PEER_TIMEOUT) {
