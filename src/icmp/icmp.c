@@ -34,7 +34,7 @@ struct icmp_echo *read_icmp_echo(int s) {
         return NULL;
     }
 
-    if (iph->ihl*4+sizeof(struct icmphdr) > n) {
+    if (iph->ihl < 5 || iph->ihl*4+sizeof(struct icmphdr) > n) {
         free(rp);
         return NULL;
     }
