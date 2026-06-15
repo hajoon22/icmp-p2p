@@ -25,6 +25,8 @@ struct peer {
 
     int trust; // trust score
     uint32_t source; // source of this peer (ipv4)
+
+    int tried; // lookup request tried
 };
 
 void handle_peers(int s, uint8_t *pub, uint8_t *priv);
