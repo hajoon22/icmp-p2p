@@ -1,24 +1,79 @@
-#include <stdlib.h>
-#include <string.h>
 #include <stdint.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
+#include <stdlib.h>
 #include <netinet/ip.h>
+#include <netinet/udp.h>
 #include <netinet/ip_icmp.h>
+#include <unistd.h>
+#include <string.h>
 
 #include "icmp.h"
-#include "../utils/utils.h"
 #include "checksum/checksum.h"
 
-void deinit_icmp_echo(struct icmp_echo *rp) {
+void deinit_icmp_unreach(struct icmp_unreach *rp) {
     if (!rp) return;
     free(rp->data);
     free(rp);
 }
 
-struct icmp_echo *read_icmp_echo(int s) {
-    struct icmp_echo *rp = calloc(1, sizeof(struct icmp_echo));
+static ssize_t build_icmp_unreach(uint8_t **buf, struct iphdr *iph, struct udphdr *udph, uint8_t *data, size_t len) {
+    *buf = malloc(8+iph->ihl*4+sizeof(struct udphdr)+len);
+    if (!*buf) return -1;
+
+    struct icmphdr *icmph = (struct icmphdr *)*buf;
+    memset(icmph, 0, sizeof(*icmph));
+    icmph->type = ICMP_DEST_UNREACH;
+    icmph->code = ICMP_NET_UNREACH;
+    memcpy(*buf+8, iph, iph->ihl*4); // ip header
+    memcpy(*buf+8+iph->ihl*4, udph, sizeof(struct udphdr));
+    memcpy(*buf+8+iph->ihl*4+sizeof(struct udphdr), data, len);
+
+    ((struct icmphdr *)(*buf))->checksum = htons(checksum(*buf, 8+iph->ihl*4+sizeof(struct udphdr)+len));
+
+    return 8+iph->ihl*4+sizeof(struct udphdr)+len;
+}
+
+int send_icmp_unreach(int s, uint32_t saddr, uint16_t sport, uint32_t daddr, uint16_t dport, uint8_t *data, size_t len) {
+    struct iphdr iph;
+    struct udphdr udph;
+
+    memset(&iph, 0, sizeof(iph));
+    memset(&udph, 0, sizeof(udph));
+
+    iph.version = 4; // ipv4
+    iph.ihl = 5;
+    iph.tos = 0;
+    iph.tot_len = htons(sizeof(struct iphdr)+sizeof(struct udphdr)+len);
+    iph.id = 0;
+    iph.frag_off = 0;
+    iph.ttl = 64;
+    iph.protocol = 17; // udp
+    iph.check = 0;
+    iph.saddr = htonl(saddr);
+    iph.daddr = htonl(daddr);
+    iph.check = htons(checksum((uint8_t *)&iph, sizeof(iph)));
+
+    udph.source = htons(sport);
+    udph.dest   = htons(dport);
+    udph.len    = htons(sizeof(struct udphdr)+len);
+    udph.check  = htons(checksum((uint8_t *)&udph, sizeof(udph)));
+
+    uint8_t *buf = NULL;
+    ssize_t size = build_icmp_unreach(&buf, &iph, &udph, data, len);
+    if (size < 0) return size;
+
+    struct sockaddr_in sin;
+    sin.sin_family = AF_INET;
+    sin.sin_addr.s_addr = htonl(saddr);
+
+    int n = sendto(s, buf, size, 0, (struct sockaddr *)&sin, sizeof(sin));
+    free(buf);
+    if (n != size) return -1;
+
+    return 0;
+}
+
+struct icmp_unreach *read_icmp_unreach(int s) {
+    struct icmp_unreach *rp = calloc(1, sizeof(struct icmp_unreach));
     if (!rp) return NULL;
 
     char buf[MAX_DATA_BUFFER];
@@ -40,10 +95,9 @@ struct icmp_echo *read_icmp_echo(int s) {
     }
 
     struct icmphdr *icmph = (struct icmphdr*)(buf+(iph->ihl*4));
-    // 0 or 8 (echo reply or request)
-    if (icmph->type == 0 || icmph->type == 8) {
-        uint8_t *payload = (uint8_t *)(icmph+1);
-        int len = ntohs(iph->tot_len)-(sizeof(struct icmphdr)+iph->ihl*4);
+    if (icmph->type == ICMP_DEST_UNREACH) {
+        uint8_t *payload = (uint8_t *)icmph+sizeof(struct icmphdr)+28;
+        int len = ntohs(iph->tot_len)-(sizeof(struct icmphdr)+iph->ihl*4+28);
         if (len <= 0) {
             free(rp);
             return NULL;
@@ -75,40 +129,4 @@ struct icmp_echo *read_icmp_echo(int s) {
 
     free(rp);
     return NULL;
-}
-
-static uint8_t *build_echo_packet(uint8_t type, uint8_t *data, size_t len) {
-    uint8_t *buf = calloc(1, len+sizeof(struct icmphdr));
-    if (!buf) return NULL;
-
-    struct icmphdr *icmph = (struct icmphdr *)buf;
-    icmph->type = type; // echo type (0 = reply, 8 = request)
-    icmph->un.echo.id = htons(random_int(65535));
-    icmph->un.echo.sequence = htons(1);
-    
-    memcpy(buf+sizeof(struct icmphdr), data, len);
-    icmph->checksum = checksum(buf, len+sizeof(struct icmphdr));
-
-    return buf;
-}
-
-int send_echo_packet(int s, uint8_t type, uint32_t dst, uint8_t *data, size_t len) {
-    if (type != 0 && type != 8) {
-        return ICMP_UNKNOWN_TYPE;
-    }
-    
-    uint8_t *buf = build_echo_packet(type, data, len);
-    if (!buf) return ICMP_ERROR_BUILD;
-
-    struct sockaddr_in sin;
-    sin.sin_family = AF_INET;
-    sin.sin_addr.s_addr = htonl(dst);
-    
-    int n = sendto(s, buf, len+sizeof(struct icmphdr), 0, (struct sockaddr *)&sin, sizeof(sin));
-    free(buf);
-    if (n != (len+sizeof(struct icmphdr))) {
-        return ICMP_ERROR_SEND;
-    }
-
-    return n;
 }
