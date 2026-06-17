@@ -1,8 +1,10 @@
-icmp-p2p: main.o icmp.o checksum.o monocypher.o peer.o protocol.o message.o utils.o
-	gcc -o icmp-p2p main.o icmp.o checksum.o monocypher.o peer.o protocol.o message.o utils.o
+icmp-p2p: main.o icmp.o checksum.o monocypher.o peer.o protocol.o message.o utils.o stun.o
+	gcc -o icmp-p2p main.o icmp.o checksum.o monocypher.o peer.o protocol.o message.o utils.o stun.o
 
 main.o: main.c
 	gcc -c main.c -o main.o
+stun.o: src/stun/stun.c src/stun/stun.h
+	gcc -c src/stun/stun.c -o stun.o
 icmp.o: src/icmp/icmp.c src/icmp/icmp.h
 	gcc -c src/icmp/icmp.c -o icmp.o
 checksum.o: src/icmp/checksum/checksum.c src/icmp/checksum/checksum.h
