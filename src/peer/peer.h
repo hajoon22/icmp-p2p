@@ -17,6 +17,7 @@ struct peer {
 
     uint8_t pub_key[32]; // public key
     uint32_t address; // ip address
+    uint16_t mapped_port; // mapped port (udp)
     uint8_t free_slots; // free connection slots
 
     
@@ -29,10 +30,10 @@ struct peer {
     int tried; // lookup request tried
 };
 
-void handle_peers(int s, uint8_t *pub, uint8_t *priv);
+void handle_peers(int s, uint16_t port, uint8_t *pub, uint8_t *priv);
 uint8_t free_slots(void);
-uint32_t *get_peers(uint32_t dst, uint8_t count, uint8_t *len);
-int new_peer(uint8_t *pub, uint32_t addr, uint8_t free_slots, uint32_t source, bool bootstrap);
+uint8_t *get_peers(uint32_t dst, uint8_t count, uint8_t *len);
+int new_peer(uint8_t *pub, uint32_t addr, uint16_t port, uint8_t fs, uint32_t source, bool bootstrap);
 void broadcast_peers(int s, uint8_t fanout, uint8_t *data, size_t len);
 int peer_trust(uint32_t addr);
 uint8_t unchecked_slots(void);
