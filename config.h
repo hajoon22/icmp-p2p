@@ -1,6 +1,9 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#define STUN_ADDR "74.125.250.129"
+#define STUN_PORT 19302
+
 #define MAX_RETRY 3
 
 #define PEER_TIMEOUT 120 // second
