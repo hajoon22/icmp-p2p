@@ -3,6 +3,6 @@
 
 #include "../../icmp/icmp.h"
 
-void parse_message(int s, struct icmp_echo *rp);
+void parse_message(int s, struct icmp_unreach *rp);
 
 #endif
