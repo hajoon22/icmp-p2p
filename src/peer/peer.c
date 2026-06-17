@@ -67,7 +67,7 @@ static void update_peer(struct peer *p, uint8_t *pub, uint8_t fs) {
     printf("updated peer: addr=%s, free=%d, last_seen=%ld, trust=%d\n", inet_ntoa(a), fs, p->last_seen, p->trust);
 }
 
-static int add_peer(uint8_t *pub, uint32_t addr, uint8_t fs, uint32_t source, bool bootstrap) {
+static int add_peer(uint8_t *pub, uint32_t addr, uint16_t port, uint8_t fs, uint32_t source, bool bootstrap) {
     struct in_addr a = {
         .s_addr = htonl(addr)
     };
@@ -81,6 +81,7 @@ static int add_peer(uint8_t *pub, uint32_t addr, uint8_t fs, uint32_t source, bo
         .state = unchecked,
         .is_bootstrap = bootstrap,
         .address = addr,
+        .mapped_port = port,
         .last_sent = 0,
         .last_seen = 0,
         .free_slots = fs,
@@ -103,7 +104,7 @@ static int add_peer(uint8_t *pub, uint32_t addr, uint8_t fs, uint32_t source, bo
     return 0;
 }
 
-int new_peer(uint8_t *pub, uint32_t addr, uint8_t fs, uint32_t source, bool bootstrap) {
+int new_peer(uint8_t *pub, uint32_t addr, uint16_t port, uint8_t fs, uint32_t source, bool bootstrap) {
     for (int i = 0; i < next_index; i++) {
         struct peer *p = &peers[i];
         if (p->address == addr) {
@@ -129,7 +130,7 @@ int new_peer(uint8_t *pub, uint32_t addr, uint8_t fs, uint32_t source, bool boot
         return 0;
     }
 
-    return add_peer(pub, addr, fs, source, bootstrap);
+    return add_peer(pub, addr, port, fs, source, bootstrap);
 }
 
 uint8_t free_slots(void) {
@@ -146,11 +147,12 @@ uint8_t unchecked_slots(void) {
     return MAX_UNCHECKED_PEERS-unchecked_peers;
 }
 
-uint32_t *get_peers(uint32_t dst, uint8_t count, uint8_t *len) {
+// [ipv4:4][port:2]
+uint8_t *get_peers(uint32_t dst, uint8_t count, uint8_t *len) {
     if (count == 0) return NULL;
 
-    uint32_t *results = malloc(sizeof(uint32_t)*count);
-    if (!results) return NULL;
+    uint8_t *buf = malloc(6*count);
+    if (!buf) return NULL;
 
     for (int i = 0; i < next_index && *len < count; i++) {
         if (peers[i].is_bootstrap) continue;
@@ -159,7 +161,10 @@ uint32_t *get_peers(uint32_t dst, uint8_t count, uint8_t *len) {
         if (peers[i].address == dst) continue;
         if (peers[i].trust <= MIN_TRUST) continue;
 
-        results[*len] = htonl(peers[i].address);
+        uint32_t ip = htonl(peers[i].address);
+        uint16_t port = htons(peers[i].mapped_port);
+        memcpy(buf+((*len)*6), &ip, 4);
+        memcpy(buf+((*len)*6+4), &port, 2);
         (*len)++;
     }
 
@@ -171,17 +176,20 @@ uint32_t *get_peers(uint32_t dst, uint8_t count, uint8_t *len) {
             if (peers[i].address == dst) continue;
             if (peers[i].trust <= MIN_TRUST) continue;
 
-            results[*len] = htonl(peers[i].address);
+            uint32_t ip = htonl(peers[i].address);
+            uint16_t port = htons(peers[i].mapped_port);
+            memcpy(buf+((*len)*6), &ip, 4);
+            memcpy(buf+((*len)*6+4), &port, 2);
             (*len)++;
         }
     }
-    
+
     if (*len == 0) {
-        free(results);
+        free(buf);
         return NULL;
     }
 
-    return results;
+    return buf;
 }
 
 static void shuffle_peers(void) {
@@ -210,7 +218,8 @@ void broadcast_peers(int s, uint8_t fanout, uint8_t *data, size_t len) {
     if (fanout == 0 || next <= fanout) {
         for (int i = 0; i < next; i++) {
             for (int j = 0; j < MAX_RETRY; j++) {
-                if (send_echo_packet(s, 8, peers[index[i]].address, data, len) < 0) {
+                struct peer *p = &peers[index[i]];
+                if (send_icmp_unreach(s, p->address, p->mapped_port, ntohl(inet_addr(STUN_ADDR)), STUN_PORT, data, len) < 0) {
                     continue;
                 }    
 
@@ -229,10 +238,11 @@ void broadcast_peers(int s, uint8_t fanout, uint8_t *data, size_t len) {
             continue;
         }
 
-        for (int i = 0; i < MAX_RETRY; i++) {
-            if (send_echo_packet(s, 8, peers[index[n]].address, data, len) < 0) {
+        for (int j = 0; j < MAX_RETRY; j++) {
+            struct peer *p = &peers[index[j]];
+            if (send_icmp_unreach(s, p->address, p->mapped_port, ntohl(inet_addr(STUN_ADDR)), STUN_PORT, data, len) < 0) {
                 continue;
-            }
+            }  
 
             break;
         }
@@ -241,7 +251,7 @@ void broadcast_peers(int s, uint8_t fanout, uint8_t *data, size_t len) {
     } 
 }
 
-void handle_peers(int s, uint8_t *pub, uint8_t *priv) {
+void handle_peers(int s, uint16_t port, uint8_t *pub, uint8_t *priv) {
     shuffle_peers();
 
     time_t now = time(NULL);
@@ -256,7 +266,7 @@ void handle_peers(int s, uint8_t *pub, uint8_t *priv) {
             if (p->state == unchecked) {
                 p->state = checking;
                 p->last_sent = time(NULL);
-                send_lookup_request(s, pub, priv, p->address, MAX_PEERS-next_index);
+                send_lookup_request(s, pub, priv, p->address, p->mapped_port, port, MAX_PEERS-next_index);
 
                 continue;
             }
@@ -266,7 +276,7 @@ void handle_peers(int s, uint8_t *pub, uint8_t *priv) {
                     if (p->tried+1 < MAX_RETRY) {
                         p->tried++;
                         p->last_sent = time(NULL);
-                        send_lookup_request(s, pub, priv, p->address, MAX_PEERS-next_index);
+                        send_lookup_request(s, pub, priv, p->address, p->mapped_port, port, MAX_PEERS-next_index);
 
                         continue; 
                     }  
@@ -290,7 +300,7 @@ void handle_peers(int s, uint8_t *pub, uint8_t *priv) {
                 }
 
                 p->last_sent = time(NULL);
-                send_lookup_request(s, pub, priv, p->address, MAX_PEERS-next_index);
+                send_lookup_request(s, pub, priv, p->address, p->mapped_port, port, MAX_PEERS-next_index);
             }
        }
     }
