@@ -1,39 +1,60 @@
-## ICMP P2P
-An ICMP based network protocol for peer discovery, peer exchange, and signed message propagation.
+# ICMP P2P
+A peer discovery, peer exchange, and signed message propagation protocol over ICMP.
 
 ## Features
-1. Discovers peers through bootstrap nodes.
-2. Exchanges peer information between peers.
-3. Verifies discovered peers using Ed25519 signatures.
-4. Maintains a peer table with periodic refresh and timeout handling.
-5. Broadcasts signed messages through the network.
-6. Maintains trust scores for peer selection.
+* Discovers public UDP mappings using STUN.
+* Discovers peers through bootstrap nodes.
+* Exchanges peer information between peers.
+* Verifies discovered peers using Ed25519 signatures.
+* Maintains a peer table with periodic refresh and timeout handling.
+* Broadcasts signed messages through the network.
+* Maintains trust scores for peer selection.
+* Keeps the UDP NAT mapping alive periodically.
+
+## NAT Traversal
+
+This project uses ICMP NAT traversal from:    
+<https://github.com/hajoon22/icmp-nat-traversal>
+
+1. Create and maintain a UDP mapping using STUN.
+2. Send ICMP Destination Unreachable packets referencing the mapped UDP flow.
+3. Carry protocol payloads after the quoted IPv4 header and UDP header.
+4. Receive protocol payloads through the NAT mapping.
 
 ## Protocol
-**Lookup Request (ICMP Echo Request)**   
-`[type (1 byte)][want (1 byte)][free_slots (1 byte)][public_key (32 bytes)][signature (64 bytes)]`
-* type: Protocol identifier.
-* want: Number of peer addresses requested.
-* free_slots: Number of available peer slots on the sender.
-* public_key: Sender public key.
-* signature: Ed25519 signature over `[type][want][free_slots][public_key]`.
+Protocol payloads are carried inside ICMP packets.
 
-**Lookup Response (ICMP Echo Reply)**   
-`[type (1 byte)][free_slots (1 byte)][peers (4*n bytes)][public_key (32 bytes)][signature (64 bytes)]`
-* type: Protocol identifier.
-* free_slots: Number of available peer slots on the sender.
-* peers: List of IPv4 peer addresses.
-* public_key: Sender public key.
-* signature: Ed25519 signature over `[type][free_slots][peers][public_key]`.
+`[ICMP Header][IPv4 header][UDP header][protocol payload]`
 
-**Message (ICMP Echo Request)**    
+### Lookup Request
+`[type (1 byte)][mapped_port (2 bytes)][want (1 byte)][free_slots (1 byte)][public_key (32 bytes)][signature (64 bytes)]`
+
+* `type` (1 byte): Protocol identifier.
+* `mapped_port` (2 bytes): Sender public UDP mapped port.
+* `want` (1 byte): Number of peer entries requested.
+* `free_slots` (1 byte): Number of available peer slots on the sender.
+* `public_key` (32 bytes): Sender public key.
+* `signature` (64 bytes): Ed25519 signature over `[type][mapped_port][want][free_slots][public_key]`.
+
+### Lookup Response
+`[type (1 byte)][free_slots (1 byte)][peers (6*n bytes)][public_key (32 bytes)][signature (64 bytes)]`
+
+* `type` (1 byte): Protocol identifier.
+* `free_slots` (1 byte): Number of available peer slots on the sender.
+* `peers` (6*n bytes): List of IPv4 peer entries.
+* `peer entry`: `[ipv4_address (4 bytes)][mapped_port (2 bytes)]`.
+* `public_key` (32 bytes): Sender public key.
+* `signature` (64 bytes): Ed25519 signature over `[type][free_slots][peers][public_key]`.
+
+### Message
 `[type (1 byte)][message (n bytes)][fanout (1 byte)][expiry (8 bytes)][signature (64 bytes)]`
-* type: Protocol identifier.
-* message: Message payload.
-* fanout: Maximum rebroadcast targets. A value of 0 broadcasts to all checked peers.
-* expiry: Big endian Unix timestamp.
-* signature: Ed25519 signature over `[type][message][fanout][expiry]`.
-  
+
+* `type` (1 byte): Protocol identifier.
+* `message` (n bytes): Message payload.
+* `fanout` (1 byte): Maximum rebroadcast targets. A value of `0` broadcasts to all checked peers.
+* `expiry` (8 bytes): Big endian Unix timestamp.
+* `signature` (64 bytes): Ed25519 signature over `[type][message][fanout][expiry]`.
+
 The first 8 bytes of the verified signature are used internally as a message identifier for duplicate suppression.
 
 ## Message Processing
@@ -46,36 +67,35 @@ The first 8 bytes of the verified signature are used internally as a message ide
 7. Rebroadcast the message according to the fanout value.
 
 ## Peer States
-| State | Description |
-|---------|-------------|
-| unchecked | Discovered but not verified |
-| checking | Lookup Request sent and waiting for a response |
-| checked | Verified peer |
+* `unchecked`: Discovered but not verified.
+* `checking`: Lookup Request sent and waiting for a response.
+* `checked`: Verified peer.
 
 ## Trust
-- New peers start with a default trust score.
-- Verified peers gain trust.
-- Peers that provide valid peer information gain trust.
-- Peers that provide inactive peers lose trust.
-- Peers below the minimum trust threshold are not shared.
-- Peers reaching the ban threshold are removed.
+* New peers start with a default trust score.
+* Verified peers gain trust.
+* Peers that provide valid peer information gain trust.
+* Peers that provide inactive peers lose trust.
+* Peers below the minimum trust threshold are not shared.
+* Peers reaching the ban threshold are removed.
 
 ## Peer Selection
-Lookup Responses include peers that:
-- are in the `checked` state,
-- are not bootstrap peers,
-- have trust above the minimum trust threshold,
-- are not the requesting peer.
-  
+* are in the checked state,
+* are not bootstrap peers,
+* have trust above the minimum trust threshold,
+* are not the requesting peer.
+
 Peers with available slots are preferred before peers with no free slots.
 
 ## Peer Management
-- Newly discovered peers are added as `unchecked`.
-- Unchecked peers are verified using Lookup Requests.
-- Peer information is updated when a valid Lookup Request or Lookup Response is received.
-- Lookup Requests are sent periodically to known peers.
-- Unresponsive peers are removed after the configured timeout.
-- Banned peers are removed from the peer table.
+* Newly discovered peers are added as unchecked.
+* Unchecked peers are verified using Lookup Requests.
+* Peer information is updated when a valid Lookup Request or Lookup Response is received.
+* Lookup Requests are sent periodically to known peers.
+* Unresponsive peers are removed after the configured timeout.
+* Banned peers are removed from the peer table.
+* The UDP NAT mapping is kept alive periodically through the STUN connected UDP socket.
 
 ## Bootstrap
+
 Peer discovery begins by sending Lookup Requests to one or more bootstrap nodes.
