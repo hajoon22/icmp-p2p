@@ -206,19 +206,13 @@ static void shuffle_peers(void) {
 }
 
 void broadcast_peers(int s, uint8_t fanout, uint8_t *data, size_t len) {
-    int index[MAX_PEERS], next = 0;
+    shuffle_peers();
+    int count = 0;
     for (int i = 0; i < next_index; i++) {
-        if (peers[i].state == checked) {
-            index[next++] = i;
-        }
-    }
-    if (next == 0) return;
-
-    // all broadcast
-    if (fanout == 0 || next <= fanout) {
-        for (int i = 0; i < next; i++) {
-            for (int j = 0; j < MAX_RETRY; j++) {
-                struct peer *p = &peers[index[i]];
+        if (count < fanout) {
+            count++;
+            for (int try = 0; try < MAX_RETRY; try++) {
+                struct peer *p = &peers[i];
                 if (send_icmp_unreach(s, p->address, p->mapped_port, ntohl(inet_addr(STUN_ADDR)), STUN_PORT, data, len) < 0) {
                     continue;
                 }    
@@ -226,29 +220,7 @@ void broadcast_peers(int s, uint8_t fanout, uint8_t *data, size_t len) {
                 break;
             }
         }
-
-        return;
     }
-
-    // broadcast random peers using fanout
-    for (int i = 0; i < fanout; i++) {
-        int n = random_int(next-1);
-        if (n < 0) {
-            i--;
-            continue;
-        }
-
-        for (int j = 0; j < MAX_RETRY; j++) {
-            struct peer *p = &peers[index[j]];
-            if (send_icmp_unreach(s, p->address, p->mapped_port, ntohl(inet_addr(STUN_ADDR)), STUN_PORT, data, len) < 0) {
-                continue;
-            }  
-
-            break;
-        }
-        
-        index[n] = index[--next];
-    } 
 }
 
 void handle_peers(int s, uint16_t port, uint8_t *pub, uint8_t *priv) {
