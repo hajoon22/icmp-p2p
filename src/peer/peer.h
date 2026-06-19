@@ -20,6 +20,7 @@ struct peer {
     uint16_t mapped_port; // mapped port (udp)
     uint8_t free_slots; // free connection slots
 
+    uint16_t nonce; // now nonce
     
     time_t last_sent;
     time_t last_seen;
@@ -33,7 +34,7 @@ struct peer {
 void handle_peers(int s, uint16_t port, uint8_t *pub, uint8_t *priv);
 uint8_t free_slots(void);
 uint8_t *get_peers(uint32_t dst, uint8_t count, uint8_t *len);
-int new_peer(uint8_t *pub, uint32_t addr, uint16_t port, uint8_t fs, uint32_t source, bool bootstrap);
+int new_peer(uint8_t *pub, uint32_t addr, uint16_t port, uint8_t fs, uint32_t source, uint16_t save_nonce, uint16_t check_nonce, bool bootstrap);
 void broadcast_peers(int s, uint8_t fanout, uint8_t *data, size_t len);
 int peer_trust(uint32_t addr);
 uint8_t unchecked_slots(void);
