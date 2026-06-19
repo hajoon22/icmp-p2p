@@ -52,14 +52,40 @@ int main(int argc, char *argv[]) {
     	a.s_addr = htonl(addr);
 		printf("bootstrap: addr=%s, mapped port=%d\n", inet_ntoa(a), port);
 
-		new_peer(NULL, addr, port, 0, 0, true);
-		send_lookup_request(icmp_s, pub, priv, addr, port, mapped_port, free_slots());
+		uint16_t nonce = send_lookup_request(icmp_s, pub, priv, addr, port, mapped_port, free_slots());
+		new_peer(NULL, addr, port, 0, 0, nonce, 0, true);
 	}
 
 	struct pollfd pfd = {
 		.fd = icmp_s,
 		.events = POLLIN
 	};
+
+	int c = 0;
+	while (1) {
+		c++;
+		if (c == 10) { // 10 sec
+			c = 0;
+			send(udp_s, "aaaaa", 5, 0); // keepalive udp mapping
+		}
+
+		handle_peers(icmp_s, mapped_port, pub, priv);
+
+		int n = poll(&pfd, 1, 100);
+		if (n < 0) break;
+		
+		if (n > 0) {
+			struct icmp_unreach *rp = read_icmp_unreach(icmp_s);
+			if (!rp) continue;
+
+			parse_message(icmp_s, rp);
+			parse_lookup_request(icmp_s, pub, priv, rp);
+			parse_lookup_response(icmp_s, pub, priv, rp); 
+
+			deinit_icmp_unreach(rp);
+		}
+	}
+}
 
 	int c = 0;
 	while (1) {
