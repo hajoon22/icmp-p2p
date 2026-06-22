@@ -10,6 +10,7 @@
 #include "../../config.h"
 #include "../protocol/protocol.h"
 #include "../utils/utils.h"
+#include "../traversal/traversal.h"
 
 static int next_index = 0;
 static size_t unchecked_peers = 0;
@@ -211,7 +212,7 @@ static void shuffle_peers(void) {
     }
 }
 
-void broadcast_peers(int s, uint8_t fanout, uint8_t *data, size_t len) {
+void broadcast_peers(struct traversal_session *ts, uint8_t fanout, uint8_t *data, size_t len) {
     shuffle_peers();
     int count = 0;
     for (int i = 0; i < next_index; i++) {
@@ -221,10 +222,9 @@ void broadcast_peers(int s, uint8_t fanout, uint8_t *data, size_t len) {
         if (count < fanout) {
             count++;
             for (int try = 0; try < MAX_RETRY; try++) {
-                struct peer *p = &peers[i];
-                if (send_icmp_unreach(s, p->address, p->mapped_port, ntohl(inet_addr(STUN_ADDR)), STUN_PORT, data, len) < 0) {
+                if (traversal_send(ts, p->address, p->mapped_port, data, len) < 0) {
                     continue;
-                }    
+                }
 
                 break;
             }
@@ -232,7 +232,7 @@ void broadcast_peers(int s, uint8_t fanout, uint8_t *data, size_t len) {
     }
 }
 
-void handle_peers(int s, uint16_t port, uint8_t *pub, uint8_t *priv) {
+void handle_peers(struct traversal_session *ts, uint8_t *pub, uint8_t *priv) {
     shuffle_peers();
 
     time_t now = time(NULL);
@@ -247,7 +247,7 @@ void handle_peers(int s, uint16_t port, uint8_t *pub, uint8_t *priv) {
             if (p->state == unchecked) {
                 p->state = checking;
                 p->last_sent = time(NULL);
-                uint16_t nonce = send_lookup_request(s, pub, priv, p->address, p->mapped_port, port, MAX_PEERS-next_index);
+                uint16_t nonce = send_lookup_request(ts, pub, priv, p->address, p->mapped_port, MAX_PEERS-next_index);
                 p->nonce = nonce;
 
                 continue;
@@ -259,7 +259,7 @@ void handle_peers(int s, uint16_t port, uint8_t *pub, uint8_t *priv) {
                         p->tried++;
             
                         p->last_sent = time(NULL);
-                        uint16_t nonce = send_lookup_request(s, pub, priv, p->address, p->mapped_port, port, MAX_PEERS-next_index);
+                        uint16_t nonce = send_lookup_request(ts, pub, priv, p->address, p->mapped_port, MAX_PEERS-next_index);
                         p->nonce = nonce;
 
                         continue; 
@@ -285,7 +285,7 @@ void handle_peers(int s, uint16_t port, uint8_t *pub, uint8_t *priv) {
 
                 p->last_sent = time(NULL);
 
-                uint16_t nonce = send_lookup_request(s, pub, priv, p->address, p->mapped_port, port, MAX_PEERS-next_index);
+                uint16_t nonce = send_lookup_request(ts, pub, priv, p->address, p->mapped_port, MAX_PEERS-next_index);
                 p->nonce = nonce;
             }
        }
