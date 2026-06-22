@@ -1,14 +1,16 @@
-icmp-p2p: main.o icmp.o checksum.o monocypher.o peer.o protocol.o message.o utils.o stun.o
-	gcc -o icmp-p2p main.o icmp.o checksum.o monocypher.o peer.o protocol.o message.o utils.o stun.o
+icmp-p2p: main.o icmp.o checksum.o monocypher.o peer.o protocol.o message.o utils.o stun.o traversal.o
+	gcc -o icmp-p2p main.o icmp.o checksum.o monocypher.o peer.o protocol.o message.o utils.o stun.o traversal.o
 
 main.o: main.c
 	gcc -c main.c -o main.o
-stun.o: src/stun/stun.c src/stun/stun.h
-	gcc -c src/stun/stun.c -o stun.o
-icmp.o: src/icmp/icmp.c src/icmp/icmp.h
-	gcc -c src/icmp/icmp.c -o icmp.o
-checksum.o: src/icmp/checksum/checksum.c src/icmp/checksum/checksum.h
-	gcc -c src/icmp/checksum/checksum.c -o checksum.o
+traversal.o: src/traversal/traversal.c src/traversal/traversal.h
+	gcc -c src/traversal/traversal.c -o traversal.o
+checksum.o: src/traversal/icmp/checksum/checksum.c src/traversal/icmp/checksum/checksum.h
+	gcc -c src/traversal/icmp/checksum/checksum.c -o checksum.o
+icmp.o: src/traversal/icmp/icmp.c src/traversal/icmp/icmp.h
+	gcc -c src/traversal/icmp/icmp.c -o icmp.o
+stun.o: src/traversal/stun/stun.c src/traversal/stun/stun.h
+	gcc -c src/traversal/stun/stun.c -o stun.o
 monocypher.o: src/monocypher/monocypher.c src/monocypher/monocypher.h
 	gcc -c src/monocypher/monocypher.c -o monocypher.o
 peer.o: src/peer/peer.c src/peer/peer.h
