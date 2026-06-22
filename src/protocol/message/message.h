@@ -1,8 +1,8 @@
 #ifndef MESSAGE_H
 #define MESSAGE_H
 
-#include "../../icmp/icmp.h"
+#include "../../traversal/traversal.h"
 
-void parse_message(int s, struct icmp_unreach *rp);
+void parse_message(struct traversal_session *ts, struct icmp_unreach *rp);
 
 #endif
