@@ -6,16 +6,15 @@
 
 #include "../protocol.h"
 #include "../../../config.h"
-#include "../../icmp/icmp.h"
 #include "../../peer/peer.h"
 #include "../../monocypher/monocypher.h"
+#include "../../traversal/traversal.h"
 
 static int next_index = 0;
 static uint64_t last_ids[MAX_MESSAGE_HISTORY];
 
 //[type:1][message:n][fanout:1][expiry:8][siagnature:64]
-void parse_message(int s, struct icmp_unreach *rp) {    
-    if (rp->icmph.type != 8) return;
+void parse_message(struct traversal_session *ts, struct icmp_unreach *rp) {    
     if (rp->data_len < 74) return;
     if (rp->data[0] != MESSAGE) return;
 
@@ -50,5 +49,5 @@ void parse_message(int s, struct icmp_unreach *rp) {
     printf("%.*s\n", (int)message_len, message);
 
     uint8_t fanout = *(uint8_t *)(message+message_len);
-    broadcast_peers(s, fanout, rp->data, rp->data_len);
+    broadcast_peers(ts, fanout, rp->data, rp->data_len);
 }
