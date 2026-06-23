@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <string.h> 
+#include <poll.h>
 
 static ssize_t build_binding_request(uint8_t **buf) {
     *buf = malloc(20);
@@ -72,7 +73,6 @@ static int parse_binding_reply(uint8_t *buf, size_t len, uint32_t *addr, uint16_
     return -1;
 }
 
-
 int get_stun(uint32_t stun, uint16_t stun_port, uint32_t *addr, uint16_t *port) {
     int s = socket(AF_INET, SOCK_DGRAM, 0);
     if (s < 0) return s;
@@ -97,23 +97,33 @@ int get_stun(uint32_t stun, uint16_t stun_port, uint32_t *addr, uint16_t *port) 
     }
     free(buf);
 
-    buf = malloc(32);
-    if (!buf) goto error;
+    struct pollfd pfd = {
+        .fd = s,
+        .events = POLLIN
+    };
 
-    n = recv(s, buf, 32, 0);
-    if (n < 0) {
+    // timeout: 10 sec
+    int r = poll(&pfd, 1, 10000);
+    if (r > 0) {
+        buf = malloc(1500);
+        if (!buf) goto error;
+
+        n = recv(s, buf, 1500, 0);
+        if (n < 0) {
+            free(buf);
+            goto error;
+        }
+
+        if (parse_binding_reply(buf, n, addr, port) < 0) {
+            free(buf);
+            goto error;
+        }
         free(buf);
-        goto error;
+
+        return s;
     }
 
-    if (parse_binding_reply(buf, n, addr, port) < 0) {
-        free(buf);
-        goto error;
-    }
-    free(buf);
-
-    return s;
-
+    goto error; // timeout
     error:
     close(s);
     return -1;
