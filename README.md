@@ -23,6 +23,12 @@ https://github.com/hajoon22/icmp-nat-traversal
 3. Carry protocol payloads after the quoted IPv4 header and UDP header.
 4. Receive protocol payloads through the NAT mapping.
 
+**Verified Environments**   
+- Linux netfilter NAT (Ubuntu, Kernel 7.0.0-15-generic)
+- TELUS Mobility LTE/5G
+- TELUS Wi-Fi Hub (Firmware v3.26.01 build11)
+
+
 ## Protocol
 
 Protocol payloads are carried inside ICMP packets.
