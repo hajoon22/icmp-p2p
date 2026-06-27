@@ -27,6 +27,7 @@ https://github.com/hajoon22/icmp-nat-traversal
 - Linux netfilter NAT (Ubuntu, Kernel 7.0.0-15-generic)
 - TELUS Mobility LTE/5G
 - TELUS Wi-Fi Hub (Firmware v3.26.01 build11)
+- Vancouver International Airport Authority Public Wi-Fi
 
 
 ## Protocol
